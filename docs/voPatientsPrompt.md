@@ -96,3 +96,24 @@ visibilizar en que cama se encuentra. La UCI 1-17, UTI 18-34. Los pacientes pued
 
 - Actualizar lista de antibioticos.
 - Actualizar lista de unidades. UCI, UTI, UTIM, MEDICINA, CIRUGIA, URGENCIAS, GENICOLOGIA, PENCIONADOS, HD (HOSPITALIZACION DOMICILIARIA)
+
+# observaciones
+
+Pagina de Inicio:
+
+- Agregar otras unidades
+- agregar total de dias de antibioticos en la vista pacientes.
+
+- En el detalle una linea cronolica de dias con antibioticos total continuo, total acumulado. Dias continuos de antibioticos.
+- acumulado : suma, episodio : numero de dias continuos de tratamiento.
+- tabla de resumen, poder ordenar por temporalidad. El de mas arriba es lo que deberia ser mas reciente.
+- detalle, tabla principal. falta end date. que solo aparece cuando se finaliza o suspende.
+
+# diagnostico:
+
+diagnostico al momento de asignar un programa. Puede ser mas de un diagnostico.
+
+- alertas por guia asociada a un diagnostico.
+- Cada guia esta asociada a dias de episodios que de superarse deberian generar alertas.
+
+- fecha inicio, fecha termino, total de dias. antibiotico utilizado. Si se puede agregar una lista de
