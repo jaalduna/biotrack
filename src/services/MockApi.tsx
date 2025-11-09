@@ -1,37 +1,5 @@
-export type PatientStatus = "waiting" | "active" | "archived";
-export type Unit =
-  | "UCI"
-  | "UTI"
-  | "UTIM"
-  | "MEDICINA"
-  | "CIRUGIA"
-  | "URGENCIAS"
-  | "GINECOLOGIA"
-  | "PENCIONADOS"
-  | "HD";
+import type { Patient } from "@/models/Patients";
 
-//export an array containing Unit values
-export const unitsOptions: (Unit | "all")[] = [
-  "all",
-  "UCI",
-  "UTI",
-  "UTIM",
-  "MEDICINA",
-  "CIRUGIA",
-  "URGENCIAS",
-  "GINECOLOGIA",
-  "PENCIONADOS",
-  "HD",
-];
-export interface Patient {
-  id: string;
-  rut: string;
-  name: string;
-  status: PatientStatus;
-  unit: Unit;
-  bedNumber: number;
-  hasEndingSoonProgram?: boolean;
-}
 export const mockPatients: Patient[] = [
   {
     id: "1",
@@ -41,6 +9,7 @@ export const mockPatients: Patient[] = [
     unit: "UCI",
     bedNumber: 5,
     hasEndingSoonProgram: true,
+    age: 25,
   },
   {
     id: "2",
@@ -49,6 +18,7 @@ export const mockPatients: Patient[] = [
     status: "waiting",
     unit: "UTI",
     bedNumber: 22,
+    age: 30,
   },
   {
     id: "3",
@@ -57,6 +27,7 @@ export const mockPatients: Patient[] = [
     status: "active",
     unit: "UCI",
     bedNumber: 12,
+    age: 50,
   },
   {
     id: "4",
@@ -65,6 +36,7 @@ export const mockPatients: Patient[] = [
     status: "archived",
     unit: "UTI",
     bedNumber: 28,
+    age: 55,
   },
   {
     id: "5",
@@ -73,6 +45,7 @@ export const mockPatients: Patient[] = [
     status: "active",
     unit: "UCI",
     bedNumber: 3,
+    age: 26,
   },
   {
     id: "6",
@@ -81,6 +54,7 @@ export const mockPatients: Patient[] = [
     status: "waiting",
     unit: "UTI",
     bedNumber: 19,
+    age: 80,
   },
   {
     id: "7",
@@ -90,6 +64,7 @@ export const mockPatients: Patient[] = [
     unit: "UCI",
     bedNumber: 8,
     hasEndingSoonProgram: true,
+    age: 56,
   },
   {
     id: "8",
@@ -98,6 +73,7 @@ export const mockPatients: Patient[] = [
     status: "archived",
     unit: "UTI",
     bedNumber: 34,
+    age: 70,
   },
 ];
 
