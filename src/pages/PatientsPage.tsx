@@ -1,33 +1,37 @@
-import { useEffect, useState } from "react";
-import { Edit } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router";
 import { CustomHeader } from "@/components/patients/CustomHeader";
 import { PatientsFilter } from "@/components/patients/patientsFilters/PatientsFilter";
+import { mockPatients } from "@/services/MockApi";
+import { EditPatient } from "@/components/patients/EditPatient";
+import { PatientResumeCard } from "@/components/patients/PatientResumeCard";
 import {
-  mockPatients,
-  type Patient,
-  type PatientStatus,
-} from "@/services/MockApi";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   PatientFilterProvider,
   usePatientFilter,
 } from "@/components/patients/context/PatientFilterContext";
-
-const statusConfig: Record<
-  PatientStatus,
-  { label: string; variant: "default" | "secondary" | "outline" }
-> = {
-  waiting: { label: "Waiting for Treatment", variant: "secondary" },
-  active: { label: "Active", variant: "default" },
-  archived: { label: "Archived", variant: "outline" },
-};
+import type { Patient } from "@/models/Patients";
 
 export function PatientsPageContent() {
   // const [searchQuery, setSearchQuery] = useState("");
-  const [patients] = useState<Patient[]>(mockPatients);
+  const [patients, setPatients] = useState<Patient[]>(mockPatients);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+
+  const handleEditPatient = (patientId: string) => {
+    const patient = patients.find((p) => p.id === patientId);
+    if (patient) setEditingPatient(patient);
+  };
+
+  const handleSave = (updated: Patient) => {
+    setPatients((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setEditingPatient(null);
+  };
 
   const { searchQuery, selectedUnit, selectedBed, showOnlyAlerts } =
     usePatientFilter();
@@ -45,9 +49,14 @@ export function PatientsPageContent() {
     return matchesSearch && matchesUnit && matchesBed && matchesAlert;
   });
 
-  //TODO: create on its own component
-  const handleEditPatient = (patientId: string) => {
-    console.log("[v0] Edit patient clicked:", patientId);
+  const getRoundedClass = (length: number, index: number) => {
+    if (index === 0) {
+      return "rounded-t-m rounded-b-none";
+    } else if (index === length - 1) {
+      return "rounded-t-none rounded-b-m ";
+    } else {
+      return "rounded-none";
+    }
   };
 
   return (
@@ -71,79 +80,31 @@ export function PatientsPageContent() {
               </p>
             </Card>
           ) : (
-            filteredPatients.map((patient) => (
+            filteredPatients.map((patient, index) => (
               <Link key={patient.id} to={`/patients/${patient.rut}`}>
-                <Card className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between cursor-pointer">
-                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-                    <div className="min-w-[120px]">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Unit / Bed
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{patient.unit}</Badge>
-                        <span className="text-sm font-semibold text-foreground">
-                          Bed {patient.bedNumber}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="min-w-[140px]">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        RUT
-                      </p>
-                      <p className="font-mono text-sm font-medium text-foreground">
-                        {patient.rut}
-                      </p>
-                    </div>
-
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Patient Name
-                      </p>
-                      <p className="text-base font-semibold text-foreground">
-                        {patient.name}
-                      </p>
-                    </div>
-
-                    <div className="min-w-[180px]">
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">
-                        Status
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant={statusConfig[patient.status].variant}>
-                          {statusConfig[patient.status].label}
-                        </Badge>
-                        {patient.hasEndingSoonProgram && (
-                          <Badge
-                            variant="destructive"
-                            className="bg-orange-500"
-                          >
-                            1 Day Left
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 bg-transparent"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleEditPatient(patient.id);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                      Edit
-                    </Button>
-                  </div>
-                </Card>
+                <PatientResumeCard
+                  patient={patient}
+                  className={getRoundedClass(filteredPatients.length, index)}
+                  handleEditPatient={handleEditPatient}
+                />
               </Link>
             ))
           )}
         </div>
+
+        <Dialog
+          open={!!editingPatient}
+          onOpenChange={() => setEditingPatient(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Patient</DialogTitle>
+            </DialogHeader>
+            {editingPatient && (
+              <EditPatient patient={editingPatient} onSave={handleSave} />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

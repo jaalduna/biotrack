@@ -1,3 +1,4 @@
+//how to make the data updates by event and not by pulling, should I enable a web socket or a pub/sub broker?
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,14 +21,9 @@ import {
 import { Search, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import {
-  allBeds,
-  uciBeds,
-  unitsOptions,
-  utiBeds,
-  type Unit,
-} from "@/services/MockApi";
+import { allBeds, uciBeds, utiBeds } from "@/services/MockApi";
 import { usePatientFilter } from "../context/PatientFilterContext";
+import { unitsOptions, type Unit } from "@/models/Units";
 
 export const PatientsFilter = () => {
   const {
@@ -93,6 +89,8 @@ export const PatientsFilter = () => {
             className="pl-10"
           />
         </div>
+        {/*//TODO: fix dialog format*/}
+
         <Dialog open={isAddPatientOpen} onOpenChange={setIsAddPatientOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
