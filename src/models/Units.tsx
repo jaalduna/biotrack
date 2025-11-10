@@ -1,4 +1,5 @@
-export type Unit =
+import { type Patient } from "./Patients";
+export type UnitName =
   | "UCI"
   | "UTI"
   | "UTIM"
@@ -9,7 +10,7 @@ export type Unit =
   | "PENCIONADOS"
   | "HD";
 
-export const unitsOptions: (Unit | "all")[] = [
+export const unitsOptions: (UnitName | "all")[] = [
   "all",
   "UCI",
   "UTI",
@@ -21,3 +22,18 @@ export const unitsOptions: (Unit | "all")[] = [
   "PENCIONADOS",
   "HD",
 ];
+
+export interface Unit {
+  name: UnitName;
+  beds: Bed[];
+}
+
+export interface Bed {
+  number: number;
+  patientRut?: string;
+}
+
+export type ActiveBed = Bed & {
+  unitName: string;
+  patient: Patient;
+};

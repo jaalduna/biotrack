@@ -6,6 +6,7 @@ import { PatientsFilter } from "@/components/patients/patientsFilters/PatientsFi
 import { mockPatients } from "@/services/MockApi";
 import { EditPatient } from "@/components/patients/EditPatient";
 import { PatientResumeCard } from "@/components/patients/PatientResumeCard";
+import { type Bed, type Unit, type ActiveBed } from "@/models/Units";
 import {
   Dialog,
   DialogContent,
@@ -36,17 +37,31 @@ export function PatientsPageContent() {
   const { searchQuery, selectedUnit, selectedBed, showOnlyAlerts } =
     usePatientFilter();
 
-  const filteredPatients = patients.filter((patient) => {
+  //TODO: finish this implementation of mocks
+  //GET data from the API (mock data for now)
+  const { data: units } = useMockUnitsQuery();
+  const { data: patients } = useMockPatientsQuery();
+
+  // obtain active beds with patients
+  const activeBeds =
+    units?.flatMap((unit: Unit) =>
+      unit.beds
+        .filter((bed: Bed) => bed.patientRut)
+        .map((bed) => ({
+          ...bed,
+          unitName: unit.name,
+          patient: patients?.find((p) => p.rut === bed.patientRut),
+        })),
+    ) ?? [];
+
+  const filteredActiveBeds = activeBeds.filter((bed: ActiveBed) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
-      patient.name.toLowerCase().includes(query) ||
-      patient.rut.toLowerCase().includes(query);
-    const matchesUnit = selectedUnit === "all" || patient.unit === selectedUnit;
-    const matchesBed =
-      selectedBed === "all" ||
-      patient.bedNumber === Number.parseInt(selectedBed);
-    const matchesAlert = !showOnlyAlerts || patient.hasEndingSoonProgram;
-    return matchesSearch && matchesUnit && matchesBed && matchesAlert;
+      bed.patient?.name.toLowerCase().includes(query) ||
+      bed.patient?.rut.toLowerCase().includes(query);
+    bed.patient?.age.toString().toLowerCase().includes(query);
+    const matchesUnit = selectedUnit === "all" || bed.unitName === selectedUnit;
+    return matchesSearch && matchesUnit;
   });
 
   const getRoundedClass = (length: number, index: number) => {
@@ -67,24 +82,24 @@ export function PatientsPageContent() {
 
         {/* Results Count */}
         <div className="mb-4 text-sm text-muted-foreground">
-          {filteredPatients.length}{" "}
-          {filteredPatients.length === 1 ? "patient" : "patients"} found
+          {filteredActiveBeds.length}{" "}
+          {filteredActiveBeds.length === 1 ? "patient" : "patients"} found
         </div>
 
         {/* Patients List */}
         <div className="space-y-3">
-          {filteredPatients.length === 0 ? (
+          {filteredActiveBeds.length === 0 ? (
             <Card className="p-12 text-center">
               <p className="text-muted-foreground">
                 No patients found matching your search.
               </p>
             </Card>
           ) : (
-            filteredPatients.map((patient, index) => (
-              <Link key={patient.id} to={`/patients/${patient.rut}`}>
+            filteredActiveBeds.map((bed: ActiveBed, index: number) => (
+              <Link key={bed.patientRut} to={`/patients/${bed.patient.rut}`}>
                 <PatientResumeCard
-                  patient={patient}
-                  className={getRoundedClass(filteredPatients.length, index)}
+                  patient={bed.patient}
+                  className={getRoundedClass(filteredActiveBeds.length, index)}
                   handleEditPatient={handleEditPatient}
                 />
               </Link>

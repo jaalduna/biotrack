@@ -23,7 +23,7 @@ import { useState } from "react";
 
 import { allBeds, uciBeds, utiBeds } from "@/services/MockApi";
 import { usePatientFilter } from "../context/PatientFilterContext";
-import { unitsOptions, type Unit } from "@/models/Units";
+import { type Unit } from "@/models/Units";
 
 export const PatientsFilter = () => {
   const {
@@ -90,82 +90,6 @@ export const PatientsFilter = () => {
           />
         </div>
         {/*//TODO: fix dialog format*/}
-
-        <Dialog open={isAddPatientOpen} onOpenChange={setIsAddPatientOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Patient
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add New Patient</DialogTitle>
-              <DialogDescription>
-                Enter the patient information to add them to the system.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="rut">RUT</Label>
-                <Input
-                  id="rut"
-                  placeholder="e.g., 12.345.678-9"
-                  value={newPatientRut}
-                  onChange={(e) => setNewPatientRut(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="name">Complete Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., María González Pérez"
-                  value={newPatientName}
-                  onChange={(e) => setNewPatientName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="unit">Unit</Label>
-                <Select
-                  value={newPatientUnit}
-                  onValueChange={(value) => setNewPatientUnit(value as Unit)}
-                >
-                  <SelectTrigger id="unit">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UCI">UCI (Beds 1-17)</SelectItem>
-                    <SelectItem value="UTI">UTI (Beds 18-34)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="bed">Bed Number</Label>
-                <Select value={newPatientBed} onValueChange={setNewPatientBed}>
-                  <SelectTrigger id="bed">
-                    <SelectValue placeholder="Select bed" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableBeds().map((bed) => (
-                      <SelectItem key={bed} value={bed.toString()}>
-                        Bed {bed}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddPatientOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleAddPatient}>Add Patient</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
