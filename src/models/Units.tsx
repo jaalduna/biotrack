@@ -31,6 +31,7 @@ export interface Unit {
 export interface Bed {
   number: number;
   patientRut?: string;
+  unit: UnitName;
 }
 
 export type ActiveBed = Bed & {

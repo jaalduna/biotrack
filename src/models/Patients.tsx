@@ -1,12 +1,16 @@
-import type { Unit } from "./Units";
+import type { PatientDiagnostic } from "./Diagnostic";
+import type { Treatment } from "./Medicines";
 
 export interface Patient {
   rut: string;
   name: string;
   age: number;
   status: PatientStatus;
-  unit: Unit;
-  bedNumber?: number;
+  diagnostic?: PatientDiagnostic;
+  treatment?: Treatment;
+
+  // unit: Unit;
+  // bedNumber?: number;
   // hasEndingSoonProgram?: boolean;
 }
 
@@ -14,4 +18,4 @@ export interface Patient {
 // active: receiving its treatment
 // warning: close to end of treatment
 // archived: patient have left the hospital
-export type PatientStatus = "waiting" | "active" | "warning" | "archived";
+export type PatientStatus = "waiting" | "active" | "alert" | "archived";

@@ -23,7 +23,7 @@ import { useState } from "react";
 
 import { allBeds, uciBeds, utiBeds } from "@/services/MockApi";
 import { usePatientFilter } from "../context/PatientFilterContext";
-import { type Unit } from "@/models/Units";
+import { unitsOptions, type Unit } from "@/models/Units";
 
 export const PatientsFilter = () => {
   const {

@@ -2,7 +2,9 @@ import { Edit } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import type { Patient, PatientStatus } from "@/models/Patients";
+import type { PatientStatus } from "@/models/Patients";
+import type { ActiveBed } from "@/models/Units";
+import { hasEndingSoonPrescription } from "@/utils/hasEndingSoonPrescription";
 
 const statusConfig: Record<
   PatientStatus,
@@ -11,18 +13,22 @@ const statusConfig: Record<
   waiting: { label: "Waiting for Treatment", variant: "secondary" },
   active: { label: "Active", variant: "default" },
   archived: { label: "Archived", variant: "outline" },
+  alert: { label: "Attention Needed", variant: "default" },
 };
 
 export interface PatientParams {
-  patient: Patient;
+  bed: ActiveBed;
   className: string;
   handleEditPatient: (patientId: string) => void;
 }
+
 export const PatientResumeCard = ({
-  patient,
+  bed,
   className,
   handleEditPatient,
 }: PatientParams) => {
+  //TODO: check for each prescription in treatment if there is one ending soon
+
   return (
     <Card
       className={`flex flex-col gap-4 p-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between cursor-pointer ${className}`}
@@ -33,9 +39,9 @@ export const PatientResumeCard = ({
             Unit / Bed
           </p>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">{patient.unit}</Badge>
+            <Badge variant="secondary">{bed.unit}</Badge>
             <span className="text-sm font-semibold text-foreground">
-              Bed {patient.bedNumber}
+              {bed.number}
             </span>
           </div>
         </div>
@@ -43,7 +49,7 @@ export const PatientResumeCard = ({
         <div className="min-w-[140px]">
           <p className="text-xs font-medium text-muted-foreground">RUT</p>
           <p className="font-mono text-sm font-medium text-foreground">
-            {patient.rut}
+            {bed.patient.rut}
           </p>
         </div>
 
@@ -52,7 +58,7 @@ export const PatientResumeCard = ({
             Patient Name
           </p>
           <p className="text-base font-semibold text-foreground">
-            {patient.name}
+            {bed.patient.name}
           </p>
         </div>
 
@@ -61,7 +67,7 @@ export const PatientResumeCard = ({
             Patient age
           </p>
           <p className="font-mono text-sm font-medium text-foreground">
-            {patient.age}
+            {bed.patient.age}
           </p>
         </div>
 
@@ -70,10 +76,10 @@ export const PatientResumeCard = ({
             Status
           </p>
           <div className="flex flex-wrap gap-2">
-            <Badge variant={statusConfig[patient.status].variant}>
-              {statusConfig[patient.status].label}
+            <Badge variant={statusConfig[bed.patient.status].variant}>
+              {statusConfig[bed.patient.status].label}
             </Badge>
-            {patient.hasEndingSoonProgram && (
+            {hasEndingSoonPrescription(bed.patient) && (
               <Badge variant="destructive" className="bg-orange-500">
                 1 Day Left
               </Badge>
@@ -89,7 +95,7 @@ export const PatientResumeCard = ({
           className="gap-2 bg-transparent"
           onClick={(e) => {
             e.preventDefault();
-            handleEditPatient(patient.id);
+            handleEditPatient(bed.patient.rut);
           }}
         >
           <Edit className="h-4 w-4" />
