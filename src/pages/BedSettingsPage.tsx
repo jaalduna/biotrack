@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,41 +9,79 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Settings, Plus, Edit, Trash2 } from "lucide-react";
 import type { Unit } from "@/models/Units";
 import type { BedConfiguration } from "@/models/Beds";
+import { bedConfigApi } from "@/services/Api";
 
 export const BedSettingsPage = () => {
-  const [unitConfigurations, setUnitConfigurations] = useState<BedConfiguration[]>([
-    { id: "1", unit: "UCI", bedCount: 17, startNumber: 1, endNumber: 17 },
-    { id: "2", unit: "UTI", bedCount: 17, startNumber: 18, endNumber: 34 }
-  ]);
-
+  const [unitConfigurations, setUnitConfigurations] = useState<BedConfiguration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<BedConfiguration | null>(null);
   const [newUnit, setNewUnit] = useState<Unit>("UCI");
   const [newBedCount, setNewBedCount] = useState(17);
   const [newStartNumber, setNewStartNumber] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddUnit = () => {
-    if (editingUnit) {
-      setUnitConfigurations(prev => 
-        prev.map(config => 
-          config.id === editingUnit.id 
-            ? { ...config, unit: newUnit, bedCount: newBedCount, startNumber: newStartNumber, endNumber: newStartNumber + newBedCount - 1 }
-            : config
-        )
-      );
-      setEditingUnit(null);
-    } else {
-      const newConfig: BedConfiguration = {
-        id: Date.now().toString(),
-        unit: newUnit,
-        bedCount: newBedCount,
-        startNumber: newStartNumber,
-        endNumber: newStartNumber + newBedCount - 1
-      };
-      setUnitConfigurations(prev => [...prev, newConfig]);
+  useEffect(() => {
+    loadConfigurations();
+  }, []);
+
+  const loadConfigurations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const configs = await bedConfigApi.getAll();
+      setUnitConfigurations(configs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load configurations');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleAddUnit = async () => {
+    if (isSubmitting) return;
     
-    setIsAddUnitOpen(false);
+    try {
+      setIsSubmitting(true);
+      
+      if (editingUnit) {
+        await bedConfigApi.update(editingUnit.id, {
+          unit: newUnit,
+          bedCount: newBedCount,
+          startNumber: newStartNumber,
+          endNumber: newStartNumber + newBedCount - 1
+        });
+        setUnitConfigurations(prev => 
+          prev.map(config => 
+            config.id === editingUnit.id 
+              ? { ...config, unit: newUnit, bedCount: newBedCount, startNumber: newStartNumber, endNumber: newStartNumber + newBedCount - 1 }
+              : config
+          )
+        );
+        setEditingUnit(null);
+      } else {
+        const newConfig: BedConfiguration = {
+          id: Date.now().toString(),
+          unit: newUnit,
+          bedCount: newBedCount,
+          startNumber: newStartNumber,
+          endNumber: newStartNumber + newBedCount - 1
+        };
+        await bedConfigApi.create(newConfig);
+        setUnitConfigurations(prev => [...prev, newConfig]);
+      }
+      
+      setIsAddUnitOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save configuration');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
     setNewUnit("UCI");
     setNewBedCount(17);
     setNewStartNumber(1);
@@ -57,9 +95,39 @@ export const BedSettingsPage = () => {
     setIsAddUnitOpen(true);
   };
 
-  const handleDeleteUnit = (id: string) => {
-    setUnitConfigurations(prev => prev.filter(config => config.id !== id));
+  const handleDeleteUnit = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this unit configuration?')) return;
+    
+    try {
+      await bedConfigApi.delete(id);
+      setUnitConfigurations(prev => prev.filter(config => config.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete configuration');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-lg text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-lg text-destructive">Error: {error}</div>
+          <Button onClick={loadConfigurations} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -67,7 +135,7 @@ export const BedSettingsPage = () => {
         <h1 className="text-3xl font-bold">Bed Settings</h1>
         <Dialog open={isAddUnitOpen} onOpenChange={setIsAddUnitOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" disabled={isSubmitting}>
               <Plus className="h-4 w-4" />
               Add Unit
             </Button>
@@ -132,14 +200,12 @@ export const BedSettingsPage = () => {
               <Button variant="outline" onClick={() => {
                 setIsAddUnitOpen(false);
                 setEditingUnit(null);
-                setNewUnit("UCI");
-                setNewBedCount(17);
-                setNewStartNumber(1);
-              }}>
+                resetForm();
+              }} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button onClick={handleAddUnit}>
-                {editingUnit ? "Update" : "Add"} Unit
+              <Button onClick={handleAddUnit} disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : (editingUnit ? 'Update' : 'Add') + ' Unit'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -162,6 +228,7 @@ export const BedSettingsPage = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleEditUnit(config)}
+                    disabled={isSubmitting}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -169,6 +236,7 @@ export const BedSettingsPage = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteUnit(config.id)}
+                    disabled={isSubmitting}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
