@@ -23,70 +23,50 @@ export const PatientResumeCard = ({
   className,
   handleEditPatient,
 }: PatientParams) => {
+  const hasAlert = patient.hasEndingSoonProgram;
+  
   return (
     <Card
-      className={`flex flex-col gap-4 p-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between cursor-pointer ${className}`}
+      className={`p-3 sm:p-4 transition-colors hover:bg-muted/50 cursor-pointer ${
+        hasAlert ? "border-l-4 border-l-orange-500" : ""
+      } ${className}`}
     >
-      <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-        <div className="min-w-[120px]">
-          <p className="text-xs font-medium text-muted-foreground">
-            Unit / Bed
-          </p>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">{patient.unit}</Badge>
-            <span className="text-sm font-semibold text-foreground">
-              Bed {patient.bedNumber}
-            </span>
-          </div>
-        </div>
-
-        <div className="min-w-[140px]">
-          <p className="text-xs font-medium text-muted-foreground">RUT</p>
-          <p className="font-mono text-sm font-medium text-foreground">
-            {patient.rut}
-          </p>
-        </div>
-
-        <div className="flex-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            Patient Name
-          </p>
-          <p className="text-base font-semibold text-foreground">
+      {/* Desktop layout */}
+      <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <p className="text-base font-semibold text-foreground truncate">
             {patient.name}
           </p>
+          <span className="text-sm text-muted-foreground">·</span>
+          <span className="text-sm font-medium text-foreground">{patient.age}y</span>
         </div>
-
-        <div className="flex-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            Patient age
-          </p>
-          <p className="font-mono text-sm font-medium text-foreground">
-            {patient.age}
-          </p>
+        
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary">{patient.unit}</Badge>
+          <span className="text-sm font-semibold text-foreground whitespace-nowrap">
+            Bed {patient.bedNumber}
+          </span>
+          <span className="text-sm text-muted-foreground">·</span>
+          <span className="font-mono text-sm text-muted-foreground">
+            {patient.rut}
+          </span>
         </div>
-
-        <div className="min-w-[180px]">
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
-            Status
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant={statusConfig[patient.status].variant}>
-              {statusConfig[patient.status].label}
+        
+        <div className="flex items-center gap-2">
+          <Badge variant={statusConfig[patient.status].variant}>
+            {statusConfig[patient.status].label}
+          </Badge>
+          {hasAlert && (
+            <Badge variant="destructive" className="bg-orange-500">
+              1 Day Left
             </Badge>
-            {patient.hasEndingSoonProgram && (
-              <Badge variant="destructive" className="bg-orange-500">
-                1 Day Left
-              </Badge>
-            )}
-          </div>
+          )}
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
+        
         <Button
           variant="outline"
           size="sm"
-          className="gap-2 bg-transparent"
+          className="gap-2 bg-transparent shrink-0"
           onClick={(e) => {
             e.preventDefault();
             handleEditPatient(patient.id);
@@ -95,6 +75,52 @@ export const PatientResumeCard = ({
           <Edit className="h-4 w-4" />
           Edit
         </Button>
+      </div>
+
+      {/* Mobile layout */}
+      <div className="sm:hidden space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-semibold text-foreground mb-1">
+              {patient.name}
+            </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="secondary" className="text-xs">{patient.unit}</Badge>
+              <span>·</span>
+              <span>Bed {patient.bedNumber}</span>
+              <span>·</span>
+              <span>{patient.age}y</span>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 bg-transparent shrink-0"
+            onClick={(e) => {
+              e.preventDefault();
+              handleEditPatient(patient.id);
+            }}
+          >
+            <Edit className="h-4 w-4" />
+            <span className="sr-only">Edit</span>
+          </Button>
+        </div>
+        
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={statusConfig[patient.status].variant}>
+              {statusConfig[patient.status].label}
+            </Badge>
+            {hasAlert && (
+              <Badge variant="destructive" className="bg-orange-500">
+                1 Day Left
+              </Badge>
+            )}
+          </div>
+          <span className="font-mono text-xs text-muted-foreground">
+            {patient.rut}
+          </span>
+        </div>
       </div>
     </Card>
   );
