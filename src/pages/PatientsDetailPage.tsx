@@ -274,7 +274,7 @@ export function PatientDetailPage() {
     setTreatmentRecords((prev) =>
       prev.map((record) =>
         record.id === recordId
-          ? { ...record, status: "suspended" as const }
+          ? { ...record, status: "finished" as const, programmedDays: record.daysApplied }
           : record,
       ),
     );
@@ -631,9 +631,7 @@ export function PatientDetailPage() {
                               variant={
                                 record.status === "active"
                                   ? "default"
-                                  : record.status === "finished"
-                                    ? "outline"
-                                    : "secondary"
+                                  : "outline"
                               }
                             >
                               {record.status}
