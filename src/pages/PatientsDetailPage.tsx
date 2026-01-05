@@ -42,8 +42,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserHeader } from "@/components/UserHeader";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
-import { patientsApi, treatmentsApi, diagnosticsApi } from "@/services/Api";
+import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi } from "@/services/Api";
 import type { Patient as PatientType } from "@/models/Patients";
+import type { DiagnosticCategory, DiagnosticSubcategory } from "@/services/Api";
 
 interface TreatmentRecord {
   id: string;
@@ -68,6 +69,8 @@ interface DiagnosticRecord {
    id: string;
    diagnosisName: string;
    diagnosisCode?: string;
+   categoryId?: string;
+   subcategoryId?: string;
    dateDiagnosed: string;
    severity: "mild" | "moderate" | "severe" | "critical";
    notes?: string;
@@ -122,20 +125,6 @@ const availableAntibiotics = [
   },
 ];
 
-const commonDiagnoses = [
-  { name: "Pneumonia, unspecified organism", code: "J18.9" },
-  { name: "Sepsis, unspecified organism", code: "A41.9" },
-  { name: "Urinary tract infection, site not specified", code: "N39.0" },
-  { name: "Cellulitis, unspecified", code: "L03.90" },
-  { name: "Chronic kidney disease, unspecified", code: "N18.9" },
-  { name: "Type 2 diabetes mellitus", code: "E11.9" },
-  { name: "Chronic obstructive pulmonary disease, unspecified", code: "J44.9" },
-  { name: "Heart failure, unspecified", code: "I50.9" },
-  { name: "Hypertensive heart disease", code: "I11.9" },
-  { name: "Acute respiratory failure", code: "J96.00" },
-  { name: "Other (custom)", code: "" },
-];
-
 const getSeverityBadgeColor = (severity: string) => {
   switch (severity) {
     case "mild":
@@ -167,6 +156,9 @@ export function PatientDetailPage() {
   );
   const [isAddDiagnosisOpen, setIsAddDiagnosisOpen] = useState(false);
   const [editingDiagnosis, setEditingDiagnosis] = useState<DiagnosticRecord | null>(null);
+  const [categories, setCategories] = useState<DiagnosticCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [subcategories, setSubcategories] = useState<DiagnosticSubcategory[]>([]);
 
   // Fetch patient by RUT from URL
   useEffect(() => {
@@ -222,6 +214,8 @@ export function PatientDetailPage() {
           id: d.id,
           diagnosisName: d.diagnosisName,
           diagnosisCode: d.diagnosisCode,
+          categoryId: d.categoryId,
+          subcategoryId: d.subcategoryId,
           dateDiagnosed: d.dateDiagnosed,
           severity: d.severity,
           notes: d.notes,
@@ -236,6 +230,34 @@ export function PatientDetailPage() {
 
     loadPatientData();
   }, [patient?.id]);
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const cats = await diagnosticCategoriesApi.getAll();
+        setCategories(cats);
+      } catch (err) {
+        console.error("Error loading diagnostic categories:", err);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
+    async function loadSubcategories() {
+      if (!selectedCategoryId) {
+        setSubcategories([]);
+        return;
+      }
+      try {
+        const subs = await diagnosticCategoriesApi.getSubcategoriesByCategory(selectedCategoryId);
+        setSubcategories(subs);
+      } catch (err) {
+        console.error("Error loading subcategories:", err);
+      }
+    }
+    loadSubcategories();
+  }, [selectedCategoryId]);
 
   const [antibioticSearchQuery, setAntibioticSearchQuery] = useState("");
   const [antibioticTypeFilter, setAntibioticTypeFilter] = useState<
@@ -258,6 +280,8 @@ export function PatientDetailPage() {
   const [diagnosisForm, setDiagnosisForm] = useState({
     diagnosisName: "",
     diagnosisCode: "",
+    categoryId: "",
+    subcategoryId: "",
     dateDiagnosed: new Date().toISOString().split("T")[0],
     severity: "moderate" as "mild" | "moderate" | "severe" | "critical",
     notes: "",
@@ -547,27 +571,33 @@ export function PatientDetailPage() {
 
   const handleOpenDiagnosisDialog = (diagnosis: DiagnosticRecord | null) => {
     if (diagnosis) {
-      // Editing existing diagnosis
       setEditingDiagnosis(diagnosis);
       setDiagnosisForm({
         diagnosisName: diagnosis.diagnosisName,
         diagnosisCode: diagnosis.diagnosisCode || "",
+        categoryId: diagnosis.categoryId || "",
+        subcategoryId: diagnosis.subcategoryId || "",
         dateDiagnosed: diagnosis.dateDiagnosed,
         severity: diagnosis.severity,
         notes: diagnosis.notes || "",
         createdBy: diagnosis.createdBy || "",
       });
+      if (diagnosis.categoryId) {
+        setSelectedCategoryId(diagnosis.categoryId);
+      }
     } else {
-      // Adding new diagnosis
       setEditingDiagnosis(null);
       setDiagnosisForm({
         diagnosisName: "",
         diagnosisCode: "",
+        categoryId: "",
+        subcategoryId: "",
         dateDiagnosed: new Date().toISOString().split("T")[0],
         severity: "moderate",
         notes: "",
         createdBy: "",
       });
+      setSelectedCategoryId("");
     }
     setIsAddDiagnosisOpen(true);
   };
@@ -582,12 +612,13 @@ export function PatientDetailPage() {
       let newDiagnosis: DiagnosticRecord;
 
       if (editingDiagnosis) {
-        // Update existing diagnosis
         const updatedDiag = await diagnosticsApi.update(editingDiagnosis.id, {
           id: editingDiagnosis.id,
           patientId: patient.id,
           diagnosisName: diagnosisForm.diagnosisName,
           diagnosisCode: diagnosisForm.diagnosisCode || undefined,
+          categoryId: diagnosisForm.categoryId || undefined,
+          subcategoryId: diagnosisForm.subcategoryId || undefined,
           dateDiagnosed: diagnosisForm.dateDiagnosed,
           severity: diagnosisForm.severity as "mild" | "moderate" | "severe" | "critical",
           notes: diagnosisForm.notes || undefined,
@@ -598,6 +629,8 @@ export function PatientDetailPage() {
           id: updatedDiag.id,
           diagnosisName: updatedDiag.diagnosisName,
           diagnosisCode: updatedDiag.diagnosisCode,
+          categoryId: updatedDiag.categoryId,
+          subcategoryId: updatedDiag.subcategoryId,
           dateDiagnosed: updatedDiag.dateDiagnosed,
           severity: updatedDiag.severity,
           notes: updatedDiag.notes,
@@ -608,11 +641,12 @@ export function PatientDetailPage() {
           prev.map((d) => (d.id === editingDiagnosis.id ? newDiagnosis : d))
         );
       } else {
-        // Add new diagnosis
         const createdDiag = await diagnosticsApi.create({
           patientId: patient.id,
           diagnosisName: diagnosisForm.diagnosisName,
           diagnosisCode: diagnosisForm.diagnosisCode || undefined,
+          categoryId: diagnosisForm.categoryId || undefined,
+          subcategoryId: diagnosisForm.subcategoryId || undefined,
           dateDiagnosed: diagnosisForm.dateDiagnosed,
           severity: diagnosisForm.severity as "mild" | "moderate" | "severe" | "critical",
           notes: diagnosisForm.notes || undefined,
@@ -623,6 +657,8 @@ export function PatientDetailPage() {
           id: createdDiag.id,
           diagnosisName: createdDiag.diagnosisName,
           diagnosisCode: createdDiag.diagnosisCode,
+          categoryId: createdDiag.categoryId,
+          subcategoryId: createdDiag.subcategoryId,
           dateDiagnosed: createdDiag.dateDiagnosed,
           severity: createdDiag.severity,
           notes: createdDiag.notes,
@@ -640,22 +676,6 @@ export function PatientDetailPage() {
       alert(
         error instanceof Error ? error.message : "Failed to save diagnosis"
       );
-    }
-  };
-
-  const handleDiagnosisNameChange = (value: string) => {
-    const selectedDiagnosis = commonDiagnoses.find((d) => d.name === value);
-    if (selectedDiagnosis) {
-      setDiagnosisForm((prev) => ({
-        ...prev,
-        diagnosisName: selectedDiagnosis.name,
-        diagnosisCode: selectedDiagnosis.code,
-      }));
-    } else {
-      setDiagnosisForm((prev) => ({
-        ...prev,
-        diagnosisName: value,
-      }));
     }
   };
 
@@ -1194,54 +1214,60 @@ export function PatientDetailPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="diagnosisName">Diagnosis</Label>
+                <Label htmlFor="category">Category</Label>
                 <Select
-                  value={diagnosisForm.diagnosisName}
-                  onValueChange={handleDiagnosisNameChange}
+                  value={selectedCategoryId}
+                  onValueChange={(value) => {
+                    setSelectedCategoryId(value);
+                    setDiagnosisForm(prev => ({
+                      ...prev,
+                      categoryId: value,
+                      subcategoryId: "",
+                      diagnosisName: ""
+                    }));
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a diagnosis..." />
+                    <SelectValue placeholder="Select a category..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {commonDiagnoses.map((diagnosis) => (
-                      <SelectItem key={diagnosis.name} value={diagnosis.name}>
-                        {diagnosis.name}
-                        {diagnosis.code && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({diagnosis.code})
-                          </span>
-                        )}
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {diagnosisForm.diagnosisName === "Other (custom)" && (
-                  <Input
-                    placeholder="Enter custom diagnosis name..."
-                    value={diagnosisForm.diagnosisName === "Other (custom)" ? "" : diagnosisForm.diagnosisName}
-                    onChange={(e) =>
-                      setDiagnosisForm((prev) => ({
-                        ...prev,
-                        diagnosisName: e.target.value,
-                      }))
-                    }
-                  />
-                )}
               </div>
+
               <div className="grid gap-2">
-                <Label htmlFor="diagnosisCode">ICD-10 Code (Optional)</Label>
-                <Input
-                  id="diagnosisCode"
-                  placeholder="e.g., J18.9"
-                  value={diagnosisForm.diagnosisCode}
-                  onChange={(e) =>
-                    setDiagnosisForm((prev) => ({
+                <Label htmlFor="diagnosis">Diagnosis</Label>
+                <Select
+                  value={diagnosisForm.subcategoryId}
+                  onValueChange={(value) => {
+                    const subcat = subcategories.find(s => s.id === value);
+                    setDiagnosisForm(prev => ({
                       ...prev,
-                      diagnosisCode: e.target.value.toUpperCase(),
-                    }))
-                  }
-                />
+                      subcategoryId: value,
+                      diagnosisName: subcat?.name || "",
+                      diagnosisCode: subcat?.code || "",
+                    }));
+                  }}
+                  disabled={!selectedCategoryId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={!selectedCategoryId ? "First select a category..." : "Select a diagnosis..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subcategories.map((subcat) => (
+                      <SelectItem key={subcat.id} value={subcat.id}>
+                        {subcat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
               <div className="grid gap-2">
                 <Label>Severity</Label>
                 <div className="flex gap-2">

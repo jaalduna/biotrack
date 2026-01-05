@@ -37,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedToken = localStorage.getItem("biotrack_token");
     const storedUser = localStorage.getItem("biotrack_user");
-    const isBeta = localStorage.getItem("biotrack_beta_mode") === "true";
     
     if (storedToken && storedUser) {
       setToken(storedToken);

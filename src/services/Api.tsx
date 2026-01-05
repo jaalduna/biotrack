@@ -66,6 +66,8 @@ interface DiagnosticApiResponse {
   patient_id: string;
   diagnosis_name: string;
   diagnosis_code?: string;
+  category_id?: string;
+  subcategory_id?: string;
   date_diagnosed: string;
   severity: "mild" | "moderate" | "severe" | "critical";
   notes?: string;
@@ -77,10 +79,54 @@ export interface Diagnostic {
   patientId: string;
   diagnosisName: string;
   diagnosisCode?: string;
+  categoryId?: string;
+  subcategoryId?: string;
   dateDiagnosed: string;
   severity: "mild" | "moderate" | "severe" | "critical";
   notes?: string;
   createdBy?: string;
+}
+
+interface DiagnosticCategoryApiResponse {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiagnosticCategory {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+interface DiagnosticSubcategoryApiResponse {
+  id: string;
+  category_id: string;
+  name: string;
+  code: string;
+  description?: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiagnosticSubcategory {
+  id: string;
+  categoryId: string;
+  name: string;
+  code: string;
+  description?: string;
+  isActive: boolean;
+  sortOrder: number;
 }
 
 // Transform backend snake_case to frontend camelCase
@@ -110,13 +156,14 @@ function transformPatientToApi(patient: Partial<Patient>): Partial<PatientApiRes
   };
 }
 
-// Transform backend snake_case to frontend camelCase for diagnostics
 function transformDiagnostic(apiDiagnostic: DiagnosticApiResponse): Diagnostic {
   return {
     id: apiDiagnostic.id,
     patientId: apiDiagnostic.patient_id,
     diagnosisName: apiDiagnostic.diagnosis_name,
     diagnosisCode: apiDiagnostic.diagnosis_code,
+    categoryId: apiDiagnostic.category_id,
+    subcategoryId: apiDiagnostic.subcategory_id,
     dateDiagnosed: apiDiagnostic.date_diagnosed,
     severity: apiDiagnostic.severity,
     notes: apiDiagnostic.notes,
@@ -124,16 +171,40 @@ function transformDiagnostic(apiDiagnostic: DiagnosticApiResponse): Diagnostic {
   };
 }
 
-// Transform frontend camelCase to backend snake_case for diagnostics
-function transformDiagnosticToApi(diagnostic: Partial<Diagnostic>): Partial<DiagnosticApiResponse> {
+function transformDiagnosticToApi(diagnostic: Partial<Diagnostic>): any {
   return {
     patient_id: diagnostic.patientId,
     diagnosis_name: diagnostic.diagnosisName,
     diagnosis_code: diagnostic.diagnosisCode,
+    category_id: diagnostic.categoryId,
+    subcategory_id: diagnostic.subcategoryId,
     date_diagnosed: diagnostic.dateDiagnosed,
     severity: diagnostic.severity,
     notes: diagnostic.notes,
     created_by: diagnostic.createdBy,
+  };
+}
+
+function transformDiagnosticCategory(apiCategory: DiagnosticCategoryApiResponse): DiagnosticCategory {
+  return {
+    id: apiCategory.id,
+    name: apiCategory.name,
+    code: apiCategory.code,
+    description: apiCategory.description,
+    isActive: apiCategory.is_active,
+    sortOrder: apiCategory.sort_order,
+  };
+}
+
+function transformDiagnosticSubcategory(apiSubcategory: DiagnosticSubcategoryApiResponse): DiagnosticSubcategory {
+  return {
+    id: apiSubcategory.id,
+    categoryId: apiSubcategory.category_id,
+    name: apiSubcategory.name,
+    code: apiSubcategory.code,
+    description: apiSubcategory.description,
+    isActive: apiSubcategory.is_active,
+    sortOrder: apiSubcategory.sort_order,
   };
 }
 
@@ -382,6 +453,26 @@ export const diagnosticsApi = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to delete diagnostic");
+  },
+};
+
+export const diagnosticCategoriesApi = {
+  async getAll(): Promise<DiagnosticCategory[]> {
+    const response = await fetch(`${API_BASE_URL}/diagnostic-categories`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to fetch diagnostic categories");
+    const data: DiagnosticCategoryApiResponse[] = await response.json();
+    return data.map(transformDiagnosticCategory);
+  },
+
+  async getSubcategoriesByCategory(categoryId: string): Promise<DiagnosticSubcategory[]> {
+    const response = await fetch(`${API_BASE_URL}/diagnostic-categories/${categoryId}/subcategories`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to fetch subcategories");
+    const data: DiagnosticSubcategoryApiResponse[] = await response.json();
+    return data.map(transformDiagnosticSubcategory);
   },
 };
 

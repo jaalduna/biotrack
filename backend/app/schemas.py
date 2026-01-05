@@ -80,6 +80,8 @@ class DiagnosticBase(BaseModel):
     severity: Optional[str] = None
     notes: Optional[str] = None
     created_by: Optional[str] = None
+    category_id: Optional[UUID] = None
+    subcategory_id: Optional[UUID] = None
 
 
 class DiagnosticCreate(DiagnosticBase):
