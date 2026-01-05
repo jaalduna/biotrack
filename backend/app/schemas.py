@@ -3,18 +3,22 @@ from typing import Optional
 from datetime import date, datetime
 from uuid import UUID
 
+
 # User schemas
 class UserBase(BaseModel):
     name: str
     email: EmailStr
     role: str = "basic"  # basic, advanced
 
+
 class UserCreate(UserBase):
     password: str
+
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
 
 class UserResponse(UserBase):
     id: UUID
@@ -28,17 +32,21 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
 
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+
 
 class PasswordReset(BaseModel):
     token: str
     new_password: str
+
 
 # Patient schemas
 class PatientBase(BaseModel):
@@ -50,8 +58,10 @@ class PatientBase(BaseModel):
     bed_number: Optional[int] = None
     has_ending_soon_program: Optional[bool] = None
 
+
 class PatientCreate(PatientBase):
     pass
+
 
 class Patient(PatientBase):
     id: UUID
@@ -60,6 +70,7 @@ class Patient(PatientBase):
 
     class Config:
         from_attributes = True
+
 
 # Diagnostic schemas
 class DiagnosticBase(BaseModel):
@@ -70,8 +81,10 @@ class DiagnosticBase(BaseModel):
     notes: Optional[str] = None
     created_by: Optional[str] = None
 
+
 class DiagnosticCreate(DiagnosticBase):
     patient_id: UUID
+
 
 class Diagnostic(DiagnosticBase):
     id: UUID
@@ -82,6 +95,7 @@ class Diagnostic(DiagnosticBase):
 
     class Config:
         from_attributes = True
+
 
 # Treatment schemas
 class TreatmentBase(BaseModel):
@@ -94,8 +108,10 @@ class TreatmentBase(BaseModel):
     start_count: Optional[int] = None
     dosage: Optional[str] = None
 
+
 class TreatmentCreate(TreatmentBase):
     patient_id: UUID
+
 
 class Treatment(TreatmentBase):
     id: UUID
@@ -107,13 +123,16 @@ class Treatment(TreatmentBase):
     class Config:
         from_attributes = True
 
+
 # Unit schemas
 class UnitBase(BaseModel):
     name: str
     description: Optional[str] = None
 
+
 class UnitCreate(UnitBase):
     pass
+
 
 class Unit(UnitBase):
     id: UUID
@@ -121,13 +140,16 @@ class Unit(UnitBase):
     class Config:
         from_attributes = True
 
+
 # Bed schemas
 class BedBase(BaseModel):
     bed_number: int
     is_occupied: bool = False
 
+
 class BedCreate(BedBase):
     unit_id: UUID
+
 
 class Bed(BedBase):
     id: UUID
@@ -137,15 +159,18 @@ class Bed(BedBase):
     class Config:
         from_attributes = True
 
+
 # Bed History schemas
 class BedHistoryBase(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     notes: Optional[str] = None
 
+
 class BedHistoryCreate(BedHistoryBase):
     patient_id: UUID
     bed_id: UUID
+
 
 class BedHistory(BedHistoryBase):
     id: UUID
@@ -155,12 +180,15 @@ class BedHistory(BedHistoryBase):
     class Config:
         from_attributes = True
 
+
 # Team schemas
 class TeamCreate(BaseModel):
     name: str
 
+
 class TeamUpdate(BaseModel):
     name: Optional[str] = None
+
 
 class TeamResponse(BaseModel):
     id: UUID
@@ -177,6 +205,7 @@ class TeamResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class TeamMemberResponse(BaseModel):
     id: UUID
     name: str
@@ -187,17 +216,21 @@ class TeamMemberResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class UpdateMemberRole(BaseModel):
     role: str  # admin, member
+
 
 # Invitation schemas
 class InvitationCreate(BaseModel):
     email: EmailStr
     role: str = "member"  # admin, member
 
+
 class TeamInvitationCreate(BaseModel):
     email: EmailStr
     role: str = "member"  # admin, member
+
 
 class InvitationResponse(BaseModel):
     id: UUID
@@ -211,6 +244,7 @@ class InvitationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class TeamInvitationResponse(BaseModel):
     id: UUID
     team_id: UUID
@@ -223,10 +257,34 @@ class TeamInvitationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
 # Email Verification schemas
 class EmailVerify(BaseModel):
     token: str
 
+
 class EmailVerifyResponse(BaseModel):
     message: str
     email_verified: bool
+
+
+# Antibiotic schemas
+class AntibioticBase(BaseModel):
+    name: str
+    type: str
+    default_start_count: int = 0
+    is_active: bool = True
+
+
+class AntibioticCreate(AntibioticBase):
+    pass
+
+
+class Antibiotic(AntibioticBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
