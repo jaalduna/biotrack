@@ -17,6 +17,8 @@ import {
   usePatientFilter,
 } from "@/components/patients/context/PatientFilterContext";
 import type { Patient } from "@/models/Patients";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
 
 export function PatientsPageContent() {
   // const [searchQuery, setSearchQuery] = useState("");
@@ -62,7 +64,16 @@ export function PatientsPageContent() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <CustomHeader />
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex-1">
+            <CustomHeader />
+          </div>
+          <Link to="/settings">
+            <Button variant="outline" size="icon" className="gap-2">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
         <PatientsFilter />
 
         {/* Results Count */}
