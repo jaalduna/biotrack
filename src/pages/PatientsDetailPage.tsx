@@ -71,6 +71,7 @@ interface DiagnosticRecord {
    diagnosisCode?: string;
    categoryId?: string;
    subcategoryId?: string;
+   categoryName?: string;
    dateDiagnosed: string;
    severity: "mild" | "moderate" | "severe" | "critical";
    notes?: string;
@@ -163,17 +164,21 @@ export function PatientDetailPage() {
 
         // Load diagnostics
         const diagnostics = await diagnosticsApi.getByPatientId(patient.id);
-        const formattedDiagnostics: DiagnosticRecord[] = diagnostics.map(d => ({
-          id: d.id,
-          diagnosisName: d.diagnosisName,
-          diagnosisCode: d.diagnosisCode,
-          categoryId: d.categoryId,
-          subcategoryId: d.subcategoryId,
-          dateDiagnosed: d.dateDiagnosed,
-          severity: d.severity,
-          notes: d.notes,
-          createdBy: d.createdBy,
-        }));
+        const formattedDiagnostics: DiagnosticRecord[] = diagnostics.map(d => {
+          const category = categories.find(cat => cat.id === d.categoryId);
+          return {
+            id: d.id,
+            diagnosisName: d.diagnosisName,
+            diagnosisCode: d.diagnosisCode,
+            categoryId: d.categoryId,
+            subcategoryId: d.subcategoryId,
+            categoryName: category?.name,
+            dateDiagnosed: d.dateDiagnosed,
+            severity: d.severity,
+            notes: d.notes,
+            createdBy: d.createdBy,
+          };
+        });
         setDiagnostics(formattedDiagnostics);
       } catch (err) {
         console.error("Error loading patient data:", err);
@@ -1368,6 +1373,11 @@ export function PatientDetailPage() {
                           <h3 className="text-lg font-bold text-foreground">
                             {diagnostic.diagnosisName}
                           </h3>
+                          {diagnostic.categoryName && (
+                            <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 hover:bg-gray-200">
+                              {diagnostic.categoryName}
+                            </Badge>
+                          )}
                           {diagnostic.diagnosisCode && (
                             <Badge variant="secondary" className="text-xs">
                               {diagnostic.diagnosisCode}
