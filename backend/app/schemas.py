@@ -288,3 +288,47 @@ class Antibiotic(AntibioticBase):
 
     class Config:
         from_attributes = True
+
+
+# Diagnostic Category schemas
+class DiagnosticCategoryBase(BaseModel):
+    name: str
+    code: str
+    description: Optional[str] = None
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class DiagnosticCategoryCreate(DiagnosticCategoryBase):
+    pass
+
+
+class DiagnosticCategory(DiagnosticCategoryBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DiagnosticSubcategoryBase(BaseModel):
+    category_id: UUID
+    name: str
+    code: str
+    description: Optional[str] = None
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class DiagnosticSubcategoryCreate(DiagnosticSubcategoryBase):
+    pass
+
+
+class DiagnosticSubcategory(DiagnosticSubcategoryBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -14,6 +14,7 @@ from .routers import (
     invitations,
     subscriptions,
     antibiotics,
+    diagnostic_categories,
 )
 
 # Create database tables
@@ -45,6 +46,9 @@ app.include_router(teams.router, prefix="/api/v1", tags=["teams"])
 app.include_router(invitations.router, prefix="/api/v1", tags=["invitations"])
 app.include_router(subscriptions.router, prefix="/api/v1", tags=["subscriptions"])
 app.include_router(antibiotics.router, prefix="/api/v1", tags=["antibiotics"])
+app.include_router(
+    diagnostic_categories.router, prefix="/api/v1", tags=["diagnostic_categories"]
+)
 
 
 @app.get("/")

@@ -119,6 +119,12 @@ class Diagnostic(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("diagnostic_categories.id"), nullable=True
+    )
+    subcategory_id = Column(
+        UUID(as_uuid=True), ForeignKey("diagnostic_subcategories.id"), nullable=True
+    )
     diagnosis_name = Column(String, nullable=False)
     diagnosis_code = Column(String)
     date_diagnosed = Column(Date)
@@ -135,6 +141,8 @@ class Diagnostic(Base):
     creator = relationship(
         "User", back_populates="created_diagnostics", foreign_keys=[created_by_user_id]
     )
+    category = relationship("DiagnosticCategory", back_populates="diagnostics")
+    subcategory = relationship("DiagnosticSubcategory", back_populates="diagnostics")
 
 
 class Treatment(Base):
@@ -209,3 +217,40 @@ class Antibiotic(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+class DiagnosticCategory(Base):
+    __tablename__ = "diagnostic_categories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False, unique=True)
+    code = Column(String(20), nullable=False, unique=True)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    subcategories = relationship(
+        "DiagnosticSubcategory", back_populates="category", cascade="all, delete-orphan"
+    )
+    diagnostics = relationship("Diagnostic", back_populates="category")
+
+
+class DiagnosticSubcategory(Base):
+    __tablename__ = "diagnostic_subcategories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("diagnostic_categories.id"), nullable=False
+    )
+    name = Column(String(300), nullable=False)
+    code = Column(String(50), nullable=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    category = relationship("DiagnosticCategory", back_populates="subcategories")
+    diagnostics = relationship("Diagnostic", back_populates="subcategory")
