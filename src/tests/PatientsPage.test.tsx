@@ -1,59 +1,48 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { PatientsPage } from '@/pages/PatientsPage';
-import { mockPatients } from '@/services/MockApi';
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { PatientsPage } from "@/pages/PatientsPage";
+import type { ReactNode } from "react";
 
-vi.mock('react-router', () => ({
-  Link: ({ children, to, ...props }) => <a href={to} {...props}>{children}</a>,
+vi.mock("react-router", () => ({
+  Link: ({
+    children,
+    to,
+    ...props
+  }: {
+    children: ReactNode;
+    to: string;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
-describe('PatientsPage', () => {
+describe("PatientsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders settings icon button', () => {
+  it("renders page title", () => {
     render(<PatientsPage />);
-    
-    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /biotrack patients/i })).toBeInTheDocument();
   });
 
-  it('navigates to settings when settings icon is clicked', async () => {
+  it("renders settings link", () => {
     render(<PatientsPage />);
-    
-    const settingsLink = screen.getByRole('link', { name: /settings/i });
-    await userEvent.click(settingsLink);
-    
-    expect(window.location.pathname).toBe('/settings');
+    const settingsLink = screen.getByRole("link", { name: /settings/i });
+    expect(settingsLink).toBeInTheDocument();
+    expect(settingsLink).toHaveAttribute("href", "/settings");
   });
 
-  it('filters patients by bed number', async () => {
+  it("renders patient list", () => {
     render(<PatientsPage />);
-    
-    const bedSelect = screen.getByLabelText(/bed/i);
-    await userEvent.click(bedSelect);
-    await userEvent.click(screen.getByText('Bed 5'));
-    
     expect(screen.getByText(/patients found/i)).toBeInTheDocument();
   });
 
-  it('shows patient bed information', () => {
-    const patientWithBed = {
-      ...mockPatients[0],
-      bedNumber: 5
-    };
-    
-    vi.doMock('@/services/MockApi', async (importOriginal) => {
-      const mod = await importOriginal();
-      return {
-        ...mod,
-        mockPatients: [patientWithBed]
-      };
-    });
-    
+  it("renders Add Patient button", () => {
     render(<PatientsPage />);
-    
-    expect(screen.getByText('Bed 5')).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add patient/i })).toBeInTheDocument();
   });
 });

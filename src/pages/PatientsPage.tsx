@@ -68,8 +68,8 @@ export function PatientsPageContent() {
           <div className="flex-1">
             <CustomHeader />
           </div>
-          <Link to="/settings">
-            <Button variant="outline" size="icon" className="gap-2">
+          <Link to="/settings" aria-label="Settings">
+            <Button variant="outline" size="icon" className="gap-2" aria-label="Settings">
               <Settings className="h-4 w-4" />
             </Button>
           </Link>

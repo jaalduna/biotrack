@@ -1,3 +1,12 @@
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom/vitest";
 
-global.window = window;
+Element.prototype.hasPointerCapture = () => false;
+Element.prototype.setPointerCapture = () => {};
+Element.prototype.releasePointerCapture = () => {};
+Element.prototype.scrollIntoView = () => {};
+
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

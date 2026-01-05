@@ -229,6 +229,7 @@ export const BedSettingsPage = () => {
                     size="sm"
                     onClick={() => handleEditUnit(config)}
                     disabled={isSubmitting}
+                    aria-label="Edit configuration"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -237,6 +238,7 @@ export const BedSettingsPage = () => {
                     size="sm"
                     onClick={() => handleDeleteUnit(config.id)}
                     disabled={isSubmitting}
+                    aria-label="Delete configuration"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
