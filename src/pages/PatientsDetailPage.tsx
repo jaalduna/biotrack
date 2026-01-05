@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams } from "react-router";
 import {
   ArrowLeft,
   Plus,
@@ -10,6 +11,9 @@ import {
   Bed,
   Search,
   X,
+  AlertCircle,
+  Trash2,
+  Edit,
 } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -18,7 +22,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { antibioticsApi, type Antibiotic } from "@/services/Api";
 import {
   Select,
   SelectContent,
@@ -35,6 +38,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { UserHeader } from "@/components/UserHeader";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
+import { patientsApi, treatmentsApi, diagnosticsApi } from "@/services/Api";
+import type { Patient as PatientType } from "@/models/Patients";
 
 interface TreatmentRecord {
   id: string;
@@ -47,12 +56,6 @@ interface TreatmentRecord {
   startCount: 0 | 1;
 }
 
-interface AvailableAntibiotic {
-  name: string;
-  type: "antibiotic" | "corticoide";
-  defaultStartCount: 0 | 1;
-}
-
 interface BedHistoryEntry {
   id: string;
   bedNumber: number;
@@ -61,111 +64,178 @@ interface BedHistoryEntry {
   endDate?: string;
 }
 
-interface Patient {
-  rut: string;
-  name: string;
-  status: "waiting" | "active" | "archived";
-}
+interface DiagnosticRecord {
+   id: string;
+   diagnosisName: string;
+   diagnosisCode?: string;
+   dateDiagnosed: string;
+   severity: "mild" | "moderate" | "severe" | "critical";
+   notes?: string;
+   createdBy?: string;
+ }
 
-// Mock data
-const mockPatient: Patient = {
-  rut: "12.345.678-9",
-  name: "María González Pérez",
-  status: "active",
+const availableAntibiotics = [
+  {
+    name: "Amoxicillin",
+    type: "antibiotic" as const,
+    defaultStartCount: 1 as 0 | 1,
+  },
+  {
+    name: "Azithromycin",
+    type: "antibiotic" as const,
+    defaultStartCount: 1 as 0 | 1,
+  },
+  {
+    name: "Ciprofloxacin",
+    type: "antibiotic" as const,
+    defaultStartCount: 0 as 0 | 1,
+  },
+  {
+    name: "Doxycycline",
+    type: "antibiotic" as const,
+    defaultStartCount: 1 as 0 | 1,
+  },
+  {
+    name: "Metronidazole",
+    type: "antibiotic" as const,
+    defaultStartCount: 0 as 0 | 1,
+  },
+  {
+    name: "Penicillin",
+    type: "antibiotic" as const,
+    defaultStartCount: 1 as 0 | 1,
+  },
+  {
+    name: "Dexamethasone",
+    type: "corticoide" as const,
+    defaultStartCount: 0 as 0 | 1,
+  },
+  {
+    name: "Prednisone",
+    type: "corticoide" as const,
+    defaultStartCount: 0 as 0 | 1,
+  },
+  {
+    name: "Hydrocortisone",
+    type: "corticoide" as const,
+    defaultStartCount: 0 as 0 | 1,
+  },
+];
+
+const commonDiagnoses = [
+  { name: "Pneumonia, unspecified organism", code: "J18.9" },
+  { name: "Sepsis, unspecified organism", code: "A41.9" },
+  { name: "Urinary tract infection, site not specified", code: "N39.0" },
+  { name: "Cellulitis, unspecified", code: "L03.90" },
+  { name: "Chronic kidney disease, unspecified", code: "N18.9" },
+  { name: "Type 2 diabetes mellitus", code: "E11.9" },
+  { name: "Chronic obstructive pulmonary disease, unspecified", code: "J44.9" },
+  { name: "Heart failure, unspecified", code: "I50.9" },
+  { name: "Hypertensive heart disease", code: "I11.9" },
+  { name: "Acute respiratory failure", code: "J96.00" },
+  { name: "Other (custom)", code: "" },
+];
+
+const getSeverityBadgeColor = (severity: string) => {
+  switch (severity) {
+    case "mild":
+      return "bg-green-500/10 text-green-700 hover:bg-green-500/20";
+    case "moderate":
+      return "bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20";
+    case "severe":
+      return "bg-orange-500/10 text-orange-700 hover:bg-orange-500/20";
+    case "critical":
+      return "bg-red-500/10 text-red-700 hover:bg-red-500/20";
+    default:
+      return "";
+  }
 };
 
-const mockTreatmentRecords: TreatmentRecord[] = [
-  {
-    id: "1",
-    antibioticName: "Amoxicillin",
-    antibioticType: "antibiotic",
-    startDate: "2025-01-10",
-    daysApplied: 9,
-    programmedDays: 10,
-    status: "active",
-    startCount: 1,
-  },
-  {
-    id: "2",
-    antibioticName: "Azithromycin",
-    antibioticType: "antibiotic",
-    startDate: "2025-01-10",
-    daysApplied: 9,
-    programmedDays: 14,
-    status: "active",
-    startCount: 1,
-  },
-  {
-    id: "3",
-    antibioticName: "Ciprofloxacin",
-    antibioticType: "antibiotic",
-    startDate: "2024-12-20",
-    daysApplied: 14,
-    programmedDays: 14,
-    status: "finished",
-    startCount: 0,
-  },
-  {
-    id: "4",
-    antibioticName: "Dexamethasone",
-    antibioticType: "corticoide",
-    startDate: "2025-01-05",
-    daysApplied: 14,
-    programmedDays: 21,
-    status: "active",
-    startCount: 0,
-  },
-];
-
-const mockBedHistory: BedHistoryEntry[] = [
-  { id: "1", bedNumber: 5, unit: "UCI", startDate: "2025-01-10" },
-  {
-    id: "2",
-    bedNumber: 3,
-    unit: "UCI",
-    startDate: "2025-01-05",
-    endDate: "2025-01-09",
-  },
-  {
-    id: "3",
-    bedNumber: 12,
-    unit: "UCI",
-    startDate: "2024-12-28",
-    endDate: "2025-01-04",
-  },
-];
-
-
-
 export function PatientDetailPage() {
-  const [patient] = useState<Patient>(mockPatient);
+  const { id: rutParam } = useParams<{ id: string }>();
+  const [patient, setPatient] = useState<PatientType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [treatmentRecords, setTreatmentRecords] =
-    useState<TreatmentRecord[]>(mockTreatmentRecords);
-  const [bedHistory] = useState<BedHistoryEntry[]>(mockBedHistory);
-  const [availableAntibiotics, setAvailableAntibiotics] = useState<AvailableAntibiotic[]>([]);
+    useState<TreatmentRecord[]>([]);  // Start empty, not with mock data
+  const [bedHistory] = useState<BedHistoryEntry[]>([]);  // Start empty, not with mock data
+  const [diagnostics, setDiagnostics] = useState<DiagnosticRecord[]>([]);  // Start empty, not with mock data
   const [isNewProgramOpen, setIsNewProgramOpen] = useState(false);
   const [isExtendOpen, setIsExtendOpen] = useState(false);
   const [extendingRecordId, setExtendingRecordId] = useState<string | null>(
     null,
   );
+  const [isAddDiagnosisOpen, setIsAddDiagnosisOpen] = useState(false);
+  const [editingDiagnosis, setEditingDiagnosis] = useState<DiagnosticRecord | null>(null);
 
+  // Fetch patient by RUT from URL
   useEffect(() => {
-    const fetchAntibiotics = async () => {
-      try {
-        const antibiotics = await antibioticsApi.getAll();
-        const mappedAntibiotics = antibiotics.map((antibiotic: Antibiotic) => ({
-          name: antibiotic.name,
-          type: antibiotic.type as "antibiotic" | "corticoide",
-          defaultStartCount: antibiotic.default_start_count as 0 | 1,
-        }));
-        setAvailableAntibiotics(mappedAntibiotics);
-      } catch (error) {
-        console.error("Failed to fetch antibiotics:", error);
+    async function loadPatient() {
+      if (!rutParam) {
+        setError("No patient RUT provided");
+        setLoading(false);
+        return;
       }
-    };
+      
+      try {
+        setLoading(true);
+        const fetchedPatient = await patientsApi.getByRut(rutParam);
+        if (!fetchedPatient) {
+          setError(`Patient with RUT ${rutParam} not found`);
+        } else {
+          setPatient(fetchedPatient);
+          setError(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load patient");
+        console.error("Error loading patient:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadPatient();
+  }, [rutParam]);
 
-    fetchAntibiotics();
-  }, []);
+  // Load treatments and diagnostics for patient
+  useEffect(() => {
+    async function loadPatientData() {
+      if (!patient || !patient.id) return;
+
+      try {
+        // Load treatments
+        const treatments = await treatmentsApi.getByPatientId(patient.id);
+        const formattedTreatments: TreatmentRecord[] = treatments.map(t => ({
+          id: t.id,
+          antibioticName: t.antibioticName,
+          antibioticType: t.antibioticType,
+          startDate: t.startDate,
+          daysApplied: t.daysApplied,
+          programmedDays: t.programmedDays,
+          status: t.status,
+          startCount: t.startCount,
+        }));
+        setTreatmentRecords(formattedTreatments);
+
+        // Load diagnostics
+        const diagnostics = await diagnosticsApi.getByPatientId(patient.id);
+        const formattedDiagnostics: DiagnosticRecord[] = diagnostics.map(d => ({
+          id: d.id,
+          diagnosisName: d.diagnosisName,
+          diagnosisCode: d.diagnosisCode,
+          dateDiagnosed: d.dateDiagnosed,
+          severity: d.severity,
+          notes: d.notes,
+          createdBy: d.createdBy,
+        }));
+        setDiagnostics(formattedDiagnostics);
+      } catch (err) {
+        console.error("Error loading patient data:", err);
+        // Don't show error, just continue with empty data
+      }
+    }
+
+    loadPatientData();
+  }, [patient?.id]);
 
   const [antibioticSearchQuery, setAntibioticSearchQuery] = useState("");
   const [antibioticTypeFilter, setAntibioticTypeFilter] = useState<
@@ -183,23 +253,66 @@ export function PatientDetailPage() {
   );
   const [days, setDays] = useState("");
   const [extendDays, setExtendDays] = useState("");
+  
+  // Diagnosis Form State
+  const [diagnosisForm, setDiagnosisForm] = useState({
+    diagnosisName: "",
+    diagnosisCode: "",
+    dateDiagnosed: new Date().toISOString().split("T")[0],
+    severity: "moderate" as "mild" | "moderate" | "severe" | "critical",
+    notes: "",
+    createdBy: "",
+  });
 
-  const calculateTotalResume = () => {
-    const antibioticTotals: Record<string, number> = {};
-    let maxDays = 0;
+  // Treatment Records Filters
+  const [treatmentStatusFilter, setTreatmentStatusFilter] = useState<
+    "all" | "active" | "finished" | "suspended" | "extended"
+  >("all");
+  const [treatmentTypeFilter, setTreatmentTypeFilter] = useState<
+    "all" | "antibiotic" | "corticoide"
+  >("all");
 
-    treatmentRecords.forEach((record) => {
-      if (!antibioticTotals[record.antibioticName]) {
-        antibioticTotals[record.antibioticName] = 0;
-      }
-      antibioticTotals[record.antibioticName] += record.daysApplied;
-      maxDays = Math.max(maxDays, antibioticTotals[record.antibioticName]);
+  // Transform treatment records to timeline format
+  const timelineTreatments = treatmentRecords.map((record) => {
+    // Handle null/undefined dates
+    if (!record.startDate) {
+      console.warn("Treatment has no start date:", record);
+      return null;
+    }
+
+    const startDate = new Date(record.startDate);
+    
+    // Verify date is valid
+    if (isNaN(startDate.getTime())) {
+      console.error("Invalid start date:", record.startDate, "for treatment:", record.id);
+      return null;
+    }
+
+    // Calculate endDate based on programmedDays (total planned duration)
+    // NOT daysApplied (which is the current progress)
+    const endDate = new Date(startDate);
+    const daysToAdd = record.programmedDays > 0 ? record.programmedDays - 1 : 0;
+    endDate.setDate(endDate.getDate() + daysToAdd);
+    
+    console.log(`Treatment ${record.antibioticName}:`, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      daysApplied: record.daysApplied,
+      programmedDays: record.programmedDays,
+      calculatedDuration: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
     });
-
-    return { antibioticTotals, maxDays };
-  };
-
-  const { antibioticTotals, maxDays } = calculateTotalResume();
+    
+    return {
+      id: record.id,
+      antibioticName: record.antibioticName,
+      antibioticType: record.antibioticType,
+      startDate,
+      endDate,
+      daysApplied: record.daysApplied,
+      programmedDays: record.programmedDays,
+      status: record.status,
+    };
+  }).filter((t): t is NonNullable<typeof t> => t !== null);
 
   const filteredAntibiotics = availableAntibiotics.filter((antibiotic) => {
     const matchesSearch = antibiotic.name
@@ -209,6 +322,16 @@ export function PatientDetailPage() {
       antibioticTypeFilter === "all" ||
       antibiotic.type === antibioticTypeFilter;
     return matchesSearch && matchesType;
+  });
+
+  // Filter treatment records
+  const filteredTreatmentRecords = treatmentRecords.filter((record) => {
+    const matchesStatus =
+      treatmentStatusFilter === "all" || record.status === treatmentStatusFilter;
+    const matchesType =
+      treatmentTypeFilter === "all" ||
+      record.antibioticType === treatmentTypeFilter;
+    return matchesStatus && matchesType;
   });
 
   const toggleAntibiotic = (antibioticName: string) => {
@@ -230,71 +353,191 @@ export function PatientDetailPage() {
     });
   };
 
-  const handleStartProgram = () => {
-    console.log("[v0] Starting new program:", {
-      antibiotics: selectedAntibiotics,
-      amounts: antibioticAmounts,
-      startCounts: antibioticStartCounts,
-      startDate,
-      days,
-    });
-    setIsNewProgramOpen(false);
-    // Reset form
-    setSelectedAntibiotics([]);
-    setAntibioticAmounts({});
-    setAntibioticStartCounts({});
-    setAntibioticSearchQuery("");
-    setAntibioticTypeFilter("all");
-    setStartDate(new Date().toISOString().split("T")[0]);
-    setDays("");
+   const handleStartProgram = async () => {
+    if (!patient || selectedAntibiotics.length === 0) {
+      alert("Please select at least one antibiotic");
+      return;
+    }
+
+    if (!days) {
+      alert("Please enter the number of days");
+      return;
+    }
+
+    const daysNum = parseInt(days);
+    if (isNaN(daysNum) || daysNum < 1 || daysNum > 365) {
+      alert("Days must be between 1 and 365");
+      return;
+    }
+
+    try {
+      // Create a treatment record for each selected antibiotic
+      const newTreatments: TreatmentRecord[] = [];
+      
+      for (const antibioticName of selectedAntibiotics) {
+        const antibiotic = availableAntibiotics.find(a => a.name === antibioticName);
+        if (!antibiotic) continue;
+
+        const newTreatment = await treatmentsApi.create({
+          patientId: patient.id,
+          antibioticName,
+          antibioticType: antibiotic.type,
+          startDate,
+          daysApplied: 0,
+          programmedDays: daysNum,
+          status: "active",
+          startCount: antibioticStartCounts[antibioticName] || antibiotic.defaultStartCount,
+          dosage: antibioticAmounts[antibioticName] || undefined,
+        });
+
+        // Convert from API response format to local TreatmentRecord format
+        newTreatments.push({
+          id: newTreatment.id,
+          antibioticName: newTreatment.antibioticName,
+          antibioticType: newTreatment.antibioticType,
+          startDate: newTreatment.startDate,
+          daysApplied: newTreatment.daysApplied,
+          programmedDays: newTreatment.programmedDays,
+          status: newTreatment.status as "active" | "suspended" | "extended" | "finished",
+          startCount: newTreatment.startCount,
+        });
+      }
+
+      // Add all new treatments to state
+      setTreatmentRecords((prev) => [...prev, ...newTreatments]);
+
+      // Close dialog and reset form
+      setIsNewProgramOpen(false);
+      setSelectedAntibiotics([]);
+      setAntibioticAmounts({});
+      setAntibioticStartCounts({});
+      setAntibioticSearchQuery("");
+      setAntibioticTypeFilter("all");
+      setStartDate(new Date().toISOString().split("T")[0]);
+      setDays("");
+
+      alert("Treatment program(s) created successfully!");
+    } catch (error) {
+      console.error("Error creating treatment program:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create treatment program"
+      );
+    }
   };
 
-  const handleSuspendRecord = (recordId: string) => {
-    console.log("[v0] Suspending record:", recordId);
-    setTreatmentRecords((prev) =>
-      prev.map((record) =>
-        record.id === recordId
-          ? { ...record, status: "suspended" as const }
-          : record,
-      ),
-    );
+   const handleSuspendRecord = async (recordId: string) => {
+    try {
+      const record = treatmentRecords.find(r => r.id === recordId);
+      if (!record) return;
+
+      await treatmentsApi.update(recordId, {
+        id: record.id,
+        patientId: record.id,
+        antibioticName: record.antibioticName,
+        antibioticType: record.antibioticType,
+        startDate: record.startDate,
+        daysApplied: record.daysApplied,
+        programmedDays: record.programmedDays,
+        status: "suspended",
+        startCount: record.startCount,
+      });
+
+      setTreatmentRecords((prev) =>
+        prev.map((r) =>
+          r.id === recordId ? { ...r, status: "suspended" as const } : r,
+        ),
+      );
+    } catch (error) {
+      console.error("Error suspending treatment:", error);
+      alert("Failed to suspend treatment");
+    }
   };
 
-  const handleFinalizeRecord = (recordId: string) => {
-    console.log("[v0] Finalizing record:", recordId);
-    setTreatmentRecords((prev) =>
-      prev.map((record) =>
-        record.id === recordId
-          ? { ...record, status: "finished" as const }
-          : record,
-      ),
-    );
+  const handleFinalizeRecord = async (recordId: string) => {
+    try {
+      const record = treatmentRecords.find(r => r.id === recordId);
+      if (!record) return;
+
+      await treatmentsApi.update(recordId, {
+        id: record.id,
+        patientId: record.id,
+        antibioticName: record.antibioticName,
+        antibioticType: record.antibioticType,
+        startDate: record.startDate,
+        daysApplied: record.daysApplied,
+        programmedDays: record.programmedDays,
+        status: "finished",
+        startCount: record.startCount,
+      });
+
+      setTreatmentRecords((prev) =>
+        prev.map((r) =>
+          r.id === recordId ? { ...r, status: "finished" as const } : r,
+        ),
+      );
+    } catch (error) {
+      console.error("Error finalizing treatment:", error);
+      alert("Failed to finalize treatment");
+    }
   };
 
-  const handleExtendRecord = () => {
-    if (!extendingRecordId) return;
-    console.log(
-      "[v0] Extending record:",
-      extendingRecordId,
-      "by",
-      extendDays,
-      "days",
-    );
-    setTreatmentRecords((prev) =>
-      prev.map((record) =>
-        record.id === extendingRecordId
-          ? {
-              ...record,
-              programmedDays:
-                record.programmedDays + Number.parseInt(extendDays),
-              status: "extended" as const,
-            }
-          : record,
-      ),
-    );
-    setIsExtendOpen(false);
-    setExtendDays("");
-    setExtendingRecordId(null);
+   const handleExtendRecord = async () => {
+    if (!extendingRecordId || !extendDays) {
+      alert("Please enter the number of days to extend");
+      return;
+    }
+
+    const extendDaysNum = parseInt(extendDays);
+    if (isNaN(extendDaysNum) || extendDaysNum < 1) {
+      alert("Days must be a positive number");
+      return;
+    }
+
+    try {
+      // Find the treatment being extended
+      const treatmentToExtend = treatmentRecords.find(r => r.id === extendingRecordId);
+      if (!treatmentToExtend) {
+        alert("Treatment not found");
+        return;
+      }
+
+      // Update the treatment with new programmed days and extended status
+      const updatedTreatment = await treatmentsApi.update(extendingRecordId, {
+        id: treatmentToExtend.id,
+        patientId: treatmentToExtend.id,
+        antibioticName: treatmentToExtend.antibioticName,
+        antibioticType: treatmentToExtend.antibioticType,
+        startDate: treatmentToExtend.startDate,
+        daysApplied: treatmentToExtend.daysApplied,
+        programmedDays: treatmentToExtend.programmedDays + extendDaysNum,
+        status: "extended",
+        startCount: treatmentToExtend.startCount,
+      });
+
+      setTreatmentRecords((prev) =>
+        prev.map((record) =>
+          record.id === extendingRecordId
+            ? {
+                ...record,
+                programmedDays: updatedTreatment.programmedDays,
+                status: "extended" as const,
+              }
+            : record,
+        ),
+      );
+
+      setIsExtendOpen(false);
+      setExtendDays("");
+      setExtendingRecordId(null);
+      alert("Treatment extended successfully!");
+    } catch (error) {
+      console.error("Error extending treatment:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to extend treatment"
+      );
+    }
   };
 
   const openExtendDialog = (recordId: string) => {
@@ -302,38 +545,176 @@ export function PatientDetailPage() {
     setIsExtendOpen(true);
   };
 
+  const handleOpenDiagnosisDialog = (diagnosis: DiagnosticRecord | null) => {
+    if (diagnosis) {
+      // Editing existing diagnosis
+      setEditingDiagnosis(diagnosis);
+      setDiagnosisForm({
+        diagnosisName: diagnosis.diagnosisName,
+        diagnosisCode: diagnosis.diagnosisCode || "",
+        dateDiagnosed: diagnosis.dateDiagnosed,
+        severity: diagnosis.severity,
+        notes: diagnosis.notes || "",
+        createdBy: diagnosis.createdBy || "",
+      });
+    } else {
+      // Adding new diagnosis
+      setEditingDiagnosis(null);
+      setDiagnosisForm({
+        diagnosisName: "",
+        diagnosisCode: "",
+        dateDiagnosed: new Date().toISOString().split("T")[0],
+        severity: "moderate",
+        notes: "",
+        createdBy: "",
+      });
+    }
+    setIsAddDiagnosisOpen(true);
+  };
+
+   const handleSaveDiagnosis = async () => {
+    if (!patient || !diagnosisForm.diagnosisName) {
+      alert("Please enter a diagnosis name");
+      return;
+    }
+
+    try {
+      let newDiagnosis: DiagnosticRecord;
+
+      if (editingDiagnosis) {
+        // Update existing diagnosis
+        const updatedDiag = await diagnosticsApi.update(editingDiagnosis.id, {
+          id: editingDiagnosis.id,
+          patientId: patient.id,
+          diagnosisName: diagnosisForm.diagnosisName,
+          diagnosisCode: diagnosisForm.diagnosisCode || undefined,
+          dateDiagnosed: diagnosisForm.dateDiagnosed,
+          severity: diagnosisForm.severity as "mild" | "moderate" | "severe" | "critical",
+          notes: diagnosisForm.notes || undefined,
+          createdBy: diagnosisForm.createdBy || undefined,
+        });
+
+        newDiagnosis = {
+          id: updatedDiag.id,
+          diagnosisName: updatedDiag.diagnosisName,
+          diagnosisCode: updatedDiag.diagnosisCode,
+          dateDiagnosed: updatedDiag.dateDiagnosed,
+          severity: updatedDiag.severity,
+          notes: updatedDiag.notes,
+          createdBy: updatedDiag.createdBy,
+        };
+
+        setDiagnostics((prev) =>
+          prev.map((d) => (d.id === editingDiagnosis.id ? newDiagnosis : d))
+        );
+      } else {
+        // Add new diagnosis
+        const createdDiag = await diagnosticsApi.create({
+          patientId: patient.id,
+          diagnosisName: diagnosisForm.diagnosisName,
+          diagnosisCode: diagnosisForm.diagnosisCode || undefined,
+          dateDiagnosed: diagnosisForm.dateDiagnosed,
+          severity: diagnosisForm.severity as "mild" | "moderate" | "severe" | "critical",
+          notes: diagnosisForm.notes || undefined,
+          createdBy: diagnosisForm.createdBy || undefined,
+        });
+
+        newDiagnosis = {
+          id: createdDiag.id,
+          diagnosisName: createdDiag.diagnosisName,
+          diagnosisCode: createdDiag.diagnosisCode,
+          dateDiagnosed: createdDiag.dateDiagnosed,
+          severity: createdDiag.severity,
+          notes: createdDiag.notes,
+          createdBy: createdDiag.createdBy,
+        };
+
+        setDiagnostics((prev) => [newDiagnosis, ...prev]);
+      }
+
+      setIsAddDiagnosisOpen(false);
+      setEditingDiagnosis(null);
+      alert(editingDiagnosis ? "Diagnosis updated successfully!" : "Diagnosis added successfully!");
+    } catch (error) {
+      console.error("Error saving diagnosis:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to save diagnosis"
+      );
+    }
+  };
+
+  const handleDiagnosisNameChange = (value: string) => {
+    const selectedDiagnosis = commonDiagnoses.find((d) => d.name === value);
+    if (selectedDiagnosis) {
+      setDiagnosisForm((prev) => ({
+        ...prev,
+        diagnosisName: selectedDiagnosis.name,
+        diagnosisCode: selectedDiagnosis.code,
+      }));
+    } else {
+      setDiagnosisForm((prev) => ({
+        ...prev,
+        diagnosisName: value,
+      }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <EmailVerificationBanner />
+      <UserHeader />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header with Back Button */}
-        <div className="mb-8">
-          <Link to="/patients">
-            <Button variant="ghost" className="mb-4 gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Patients
-            </Button>
-          </Link>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                {patient.name}
-              </h1>
-              <p className="mt-1 font-mono text-sm text-muted-foreground">
-                RUT: {patient.rut}
-              </p>
+        {/* Loading State */}
+        {loading && (
+          <Card className="p-12 text-center">
+            <p className="text-muted-foreground">Loading patient details...</p>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Card className="p-12 text-center border-red-200 bg-red-50">
+            <p className="text-red-600">{error}</p>
+            <Link to="/patients">
+              <Button variant="outline" className="mt-4">
+                Back to Patients
+              </Button>
+            </Link>
+          </Card>
+        )}
+
+        {/* Patient Details */}
+        {!loading && !error && patient && (
+          <>
+            {/* Header with Back Button */}
+            <div className="mb-8">
+              <Link to="/patients">
+                <Button variant="ghost" className="mb-4 gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Patients
+                </Button>
+              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                    {patient.name}
+                  </h1>
+                  <p className="text-muted-foreground">
+                    RUT: {patient.rut}
+                  </p>
+                </div>
+                <Badge
+                  variant={patient.status === "active" ? "default" : "secondary"}
+                  className="w-fit"
+                >
+                  {patient.status === "active"
+                    ? "Active Treatment"
+                    : patient.status === "waiting"
+                      ? "Waiting for Treatment"
+                      : "Archived"}
+                </Badge>
+              </div>
             </div>
-            <Badge
-              variant={patient.status === "active" ? "default" : "secondary"}
-              className="w-fit"
-            >
-              {patient.status === "active"
-                ? "Active"
-                : patient.status === "waiting"
-                  ? "Waiting for Treatment"
-                  : "Archived"}
-            </Badge>
-          </div>
-        </div>
 
         {/* Resume Cards */}
         {/* <div className="mb-8 grid gap-4 sm:grid-cols-2"> */}
@@ -572,31 +953,104 @@ export function PatientDetailPage() {
             </Dialog>
           </div>
 
+          {/* Treatment Records Filters */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              Status:
+            </span>
+            <Badge
+              variant={treatmentStatusFilter === "all" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentStatusFilter("all")}
+            >
+              All
+            </Badge>
+            <Badge
+              variant={treatmentStatusFilter === "active" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentStatusFilter("active")}
+            >
+              Active
+            </Badge>
+            <Badge
+              variant={treatmentStatusFilter === "finished" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentStatusFilter("finished")}
+            >
+              Finished
+            </Badge>
+            <Badge
+              variant={treatmentStatusFilter === "suspended" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentStatusFilter("suspended")}
+            >
+              Suspended
+            </Badge>
+            <Badge
+              variant={treatmentStatusFilter === "extended" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentStatusFilter("extended")}
+            >
+              Extended
+            </Badge>
+
+            <span className="ml-4 text-sm font-medium text-muted-foreground">
+              Type:
+            </span>
+            <Badge
+              variant={treatmentTypeFilter === "all" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentTypeFilter("all")}
+            >
+              All
+            </Badge>
+            <Badge
+              variant={treatmentTypeFilter === "antibiotic" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentTypeFilter("antibiotic")}
+            >
+              Antibiotics
+            </Badge>
+            <Badge
+              variant={treatmentTypeFilter === "corticoide" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setTreatmentTypeFilter("corticoide")}
+            >
+              Corticoides
+            </Badge>
+          </div>
+
           <Card className="overflow-hidden">
-            {treatmentRecords.length === 0 ? (
+            {filteredTreatmentRecords.length === 0 ? (
               <div className="p-12 text-center">
                 <p className="mb-4 text-muted-foreground">
-                  No treatment records yet
+                  {treatmentRecords.length === 0
+                    ? "No treatment records yet"
+                    : "No treatments match the selected filters"}
                 </p>
-                <Button
-                  onClick={() => setIsNewProgramOpen(true)}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Start New Program
-                </Button>
+                {treatmentRecords.length === 0 && (
+                  <Button
+                    onClick={() => setIsNewProgramOpen(true)}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Start New Program
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {treatmentRecords.map((record) => {
+                {filteredTreatmentRecords.map((record) => {
                   const daysRemaining =
                     record.programmedDays - record.daysApplied;
+                  // Orange background ONLY for active treatments with exactly 1 day remaining
+                  // Never apply orange to suspended, finished, or extended treatments
                   const isEndingSoon =
-                    daysRemaining === 1 && record.status === "active";
+                    record.status === "active" && daysRemaining === 1;
                   return (
                     <div
                       key={record.id}
-                      className={`p-4 ${isEndingSoon ? "bg-orange-500/10" : ""}`}
+                      className={`p-4 ${isEndingSoon && record.status === "active" ? "bg-orange-500/10" : ""}`}
                     >
                       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex-1 space-y-3">
@@ -727,6 +1181,284 @@ export function PatientDetailPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Add/Edit Diagnosis Dialog */}
+        <Dialog open={isAddDiagnosisOpen} onOpenChange={setIsAddDiagnosisOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingDiagnosis ? "Edit Diagnosis" : "Add New Diagnosis"}
+              </DialogTitle>
+              <DialogDescription>
+                Record a new diagnosis for this patient with ICD-10 code and severity.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="diagnosisName">Diagnosis</Label>
+                <Select
+                  value={diagnosisForm.diagnosisName}
+                  onValueChange={handleDiagnosisNameChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a diagnosis..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonDiagnoses.map((diagnosis) => (
+                      <SelectItem key={diagnosis.name} value={diagnosis.name}>
+                        {diagnosis.name}
+                        {diagnosis.code && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({diagnosis.code})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {diagnosisForm.diagnosisName === "Other (custom)" && (
+                  <Input
+                    placeholder="Enter custom diagnosis name..."
+                    value={diagnosisForm.diagnosisName === "Other (custom)" ? "" : diagnosisForm.diagnosisName}
+                    onChange={(e) =>
+                      setDiagnosisForm((prev) => ({
+                        ...prev,
+                        diagnosisName: e.target.value,
+                      }))
+                    }
+                  />
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="diagnosisCode">ICD-10 Code (Optional)</Label>
+                <Input
+                  id="diagnosisCode"
+                  placeholder="e.g., J18.9"
+                  value={diagnosisForm.diagnosisCode}
+                  onChange={(e) =>
+                    setDiagnosisForm((prev) => ({
+                      ...prev,
+                      diagnosisCode: e.target.value.toUpperCase(),
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Severity</Label>
+                <div className="flex gap-2">
+                  {(["mild", "moderate", "severe", "critical"] as const).map(
+                    (severity) => (
+                      <Badge
+                        key={severity}
+                        variant={
+                          diagnosisForm.severity === severity
+                            ? "default"
+                            : "outline"
+                        }
+                        className={`cursor-pointer ${
+                          diagnosisForm.severity === severity
+                            ? getSeverityBadgeColor(severity)
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setDiagnosisForm((prev) => ({
+                            ...prev,
+                            severity,
+                          }))
+                        }
+                      >
+                        {severity.charAt(0).toUpperCase() + severity.slice(1)}
+                      </Badge>
+                    )
+                  )}
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="dateDiagnosed">Date Diagnosed</Label>
+                <Input
+                  id="dateDiagnosed"
+                  type="date"
+                  value={diagnosisForm.dateDiagnosed}
+                  onChange={(e) =>
+                    setDiagnosisForm((prev) => ({
+                      ...prev,
+                      dateDiagnosed: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Clinical Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Enter any relevant clinical notes..."
+                  value={diagnosisForm.notes}
+                  onChange={(e) =>
+                    setDiagnosisForm((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {diagnosisForm.notes.length}/500 characters
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="createdBy">Created By (Optional)</Label>
+                <Input
+                  id="createdBy"
+                  placeholder="e.g., Dr. Smith"
+                  value={diagnosisForm.createdBy}
+                  onChange={(e) =>
+                    setDiagnosisForm((prev) => ({
+                      ...prev,
+                      createdBy: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsAddDiagnosisOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveDiagnosis}>
+                {editingDiagnosis ? "Update" : "Add"} Diagnosis
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diagnostics Section */}
+        <div className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-foreground">
+              Diagnostics
+            </h2>
+            <Button 
+              className="gap-2"
+              onClick={() => handleOpenDiagnosisDialog(null)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Diagnosis
+            </Button>
+          </div>
+          
+          <Card className="overflow-hidden">
+            {diagnostics.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="mb-4 text-muted-foreground">
+                  No diagnostics recorded yet
+                </p>
+                <Button
+                  onClick={() => handleOpenDiagnosisDialog(null)}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add First Diagnosis
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {diagnostics.map((diagnostic) => (
+                  <div
+                    key={diagnostic.id}
+                    className="p-4"
+                  >
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-bold text-foreground">
+                            {diagnostic.diagnosisName}
+                          </h3>
+                          {diagnostic.diagnosisCode && (
+                            <Badge variant="secondary" className="text-xs">
+                              {diagnostic.diagnosisCode}
+                            </Badge>
+                          )}
+                          <Badge
+                            className={getSeverityBadgeColor(diagnostic.severity)}
+                          >
+                            {diagnostic.severity.charAt(0).toUpperCase() + diagnostic.severity.slice(1)}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-6">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Date Diagnosed
+                            </p>
+                            <p className="font-semibold text-foreground">
+                              {new Date(diagnostic.dateDiagnosed).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {diagnostic.createdBy && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Created By
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {diagnostic.createdBy}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {diagnostic.notes && (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Clinical Notes
+                            </p>
+                            <p className="text-sm text-foreground">
+                              {diagnostic.notes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDiagnosisDialog(diagnostic)}
+                        className="gap-2 bg-transparent"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={async () => {
+                           if (confirm(`Are you sure you want to delete the diagnosis "${diagnostic.diagnosisName}"?`)) {
+                             try {
+                               await diagnosticsApi.delete(diagnostic.id);
+                               setDiagnostics(prev => prev.filter(d => d.id !== diagnostic.id));
+                               alert("Diagnosis deleted successfully");
+                             } catch (error) {
+                               console.error("Error deleting diagnosis:", error);
+                               alert("Failed to delete diagnosis");
+                             }
+                           }
+                         }}
+                         className="gap-2 bg-transparent text-red-600 hover:text-red-700"
+                       >
+                         <Trash2 className="h-4 w-4" />
+                         Delete
+                       </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+
         {/* Bed History */}
         <div className="mb-8">
           <h2 className="mb-4 text-2xl font-bold text-foreground">
@@ -787,48 +1519,12 @@ export function PatientDetailPage() {
 
         <div>
           <h2 className="mb-4 text-2xl font-bold text-foreground">
-            Total Resume
+            Antibiotic Treatment Timeline
           </h2>
-          <Card className="p-6">
-            <div className="mb-6">
-              <p className="text-sm font-medium text-muted-foreground">
-                Total de días con antibioticos aplicados
-              </p>
-              <p className="text-4xl font-bold text-foreground">
-                {maxDays} días
-              </p>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                Days Applied by Antibiotic
-              </h3>
-              <div className="space-y-3">
-                {Object.entries(antibioticTotals)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([name, days]) => (
-                    <div key={name} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground">
-                          {name}
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {days} days
-                        </span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{
-                            width: `${maxDays > 0 ? (days / maxDays) * 100 : 0}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </Card>
+          <AntibioticTimeline treatments={timelineTreatments} />
         </div>
+          </>
+        )}
       </div>
     </div>
   );
