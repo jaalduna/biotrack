@@ -467,7 +467,7 @@ export const diagnosticCategoriesApi = {
   },
 
   async getSubcategoriesByCategory(categoryId: string): Promise<DiagnosticSubcategory[]> {
-    const response = await fetch(`${API_BASE_URL}/diagnostic-categories/${categoryId}/subcategories`, {
+    const response = await fetch(`${API_BASE_URL}/diagnostic-subcategories?category_id=${categoryId}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch subcategories");
