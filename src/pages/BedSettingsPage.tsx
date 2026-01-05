@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import type { Unit } from "@/models/Units";
 import type { BedConfiguration } from "@/models/Beds";
 import { bedConfigApi } from "@/services/Api";
