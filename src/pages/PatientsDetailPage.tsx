@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { antibioticsApi, type Antibiotic } from "@/services/Api";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,12 @@ interface TreatmentRecord {
   programmedDays: number;
   status: "active" | "suspended" | "extended" | "finished";
   startCount: 0 | 1;
+}
+
+interface AvailableAntibiotic {
+  name: string;
+  type: "antibiotic" | "corticoide";
+  defaultStartCount: 0 | 1;
 }
 
 interface BedHistoryEntry {
@@ -128,64 +135,37 @@ const mockBedHistory: BedHistoryEntry[] = [
   },
 ];
 
-const availableAntibiotics = [
-  {
-    name: "Amoxicillin",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Azithromycin",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Ciprofloxacin",
-    type: "antibiotic" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Doxycycline",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Metronidazole",
-    type: "antibiotic" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Penicillin",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Dexamethasone",
-    type: "corticoide" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Prednisone",
-    type: "corticoide" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Hydrocortisone",
-    type: "corticoide" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-];
+
 
 export function PatientDetailPage() {
   const [patient] = useState<Patient>(mockPatient);
   const [treatmentRecords, setTreatmentRecords] =
     useState<TreatmentRecord[]>(mockTreatmentRecords);
   const [bedHistory] = useState<BedHistoryEntry[]>(mockBedHistory);
+  const [availableAntibiotics, setAvailableAntibiotics] = useState<AvailableAntibiotic[]>([]);
   const [isNewProgramOpen, setIsNewProgramOpen] = useState(false);
   const [isExtendOpen, setIsExtendOpen] = useState(false);
   const [extendingRecordId, setExtendingRecordId] = useState<string | null>(
     null,
   );
+
+  useEffect(() => {
+    const fetchAntibiotics = async () => {
+      try {
+        const antibiotics = await antibioticsApi.getAll();
+        const mappedAntibiotics = antibiotics.map((antibiotic: Antibiotic) => ({
+          name: antibiotic.name,
+          type: antibiotic.type as "antibiotic" | "corticoide",
+          defaultStartCount: antibiotic.default_start_count as 0 | 1,
+        }));
+        setAvailableAntibiotics(mappedAntibiotics);
+      } catch (error) {
+        console.error("Failed to fetch antibiotics:", error);
+      }
+    };
+
+    fetchAntibiotics();
+  }, []);
 
   const [antibioticSearchQuery, setAntibioticSearchQuery] = useState("");
   const [antibioticTypeFilter, setAntibioticTypeFilter] = useState<

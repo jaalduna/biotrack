@@ -2,6 +2,14 @@ import type { BedConfiguration } from "@/models/Beds";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+};
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -52,6 +60,16 @@ export const bedConfigApi = {
   },
 };
 
+export interface Antibiotic {
+  id: string;
+  name: string;
+  type: "antibiotic" | "corticoide";
+  default_start_count: 0 | 1;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const bedApi = {
   getAll: async (): Promise<any[]> => {
     const response = await fetch(`${API_BASE_URL}/api/beds`);
@@ -62,6 +80,16 @@ export const bedApi = {
   getByUnit: async (unit: string): Promise<any[]> => {
     const response = await fetch(`${API_BASE_URL}/api/beds?unit=${unit}`);
     const result: ApiResponse<any[]> = await response.json();
+    return result.data || [];
+  },
+};
+
+export const antibioticsApi = {
+  getAll: async (): Promise<Antibiotic[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/antibiotics`, {
+      headers: getAuthHeaders(),
+    });
+    const result: ApiResponse<Antibiotic[]> = await response.json();
     return result.data || [];
   },
 };

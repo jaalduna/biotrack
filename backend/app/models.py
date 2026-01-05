@@ -1,16 +1,29 @@
-from sqlalchemy import Column, Integer, String, Date, Text, Boolean, ForeignKey, TIMESTAMP, func
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    Text,
+    Boolean,
+    ForeignKey,
+    TIMESTAMP,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, timedelta
 from .database import Base
 
+
 class Team(Base):
     __tablename__ = "teams"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
-    subscription_status = Column(String(20), default="trial")  # trial, active, cancelled, expired
+    subscription_status = Column(
+        String(20), default="trial"
+    )  # trial, active, cancelled, expired
     subscription_plan = Column(String(50), nullable=True)  # basic, premium
     member_limit = Column(Integer, default=5)
     trial_ends_at = Column(TIMESTAMP, nullable=True)
@@ -25,6 +38,7 @@ class Team(Base):
     members = relationship("User", back_populates="team")
     invitations = relationship("TeamInvitation", back_populates="team")
 
+
 class TeamInvitation(Base):
     __tablename__ = "team_invitations"
 
@@ -35,7 +49,9 @@ class TeamInvitation(Base):
     role = Column(String(20), default="member")  # admin, member
     token = Column(String(100), nullable=False, unique=True, index=True)
     expires_at = Column(TIMESTAMP, nullable=False)
-    status = Column(String(20), default="pending")  # pending, accepted, cancelled, expired
+    status = Column(
+        String(20), default="pending"
+    )  # pending, accepted, cancelled, expired
     accepted_at = Column(TIMESTAMP, nullable=True)
     accepted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
@@ -44,6 +60,7 @@ class TeamInvitation(Base):
     team = relationship("Team", back_populates="invitations")
     inviter = relationship("User", foreign_keys=[invited_by])
     acceptor = relationship("User", foreign_keys=[accepted_by])
+
 
 class User(Base):
     __tablename__ = "users"
@@ -66,8 +83,17 @@ class User(Base):
 
     # Relationships
     team = relationship("Team", back_populates="members")
-    created_diagnostics = relationship("Diagnostic", back_populates="creator", foreign_keys="Diagnostic.created_by_user_id")
-    created_treatments = relationship("Treatment", back_populates="creator", foreign_keys="Treatment.created_by_user_id")
+    created_diagnostics = relationship(
+        "Diagnostic",
+        back_populates="creator",
+        foreign_keys="Diagnostic.created_by_user_id",
+    )
+    created_treatments = relationship(
+        "Treatment",
+        back_populates="creator",
+        foreign_keys="Treatment.created_by_user_id",
+    )
+
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -87,6 +113,7 @@ class Patient(Base):
     treatments = relationship("Treatment", back_populates="patient")
     bed_history = relationship("BedHistory", back_populates="patient")
 
+
 class Diagnostic(Base):
     __tablename__ = "diagnostics"
 
@@ -98,12 +125,17 @@ class Diagnostic(Base):
     severity = Column(String)  # mild, moderate, severe, critical
     notes = Column(Text)
     created_by = Column(String)  # Legacy field for name
-    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
     patient = relationship("Patient", back_populates="diagnostics")
-    creator = relationship("User", back_populates="created_diagnostics", foreign_keys=[created_by_user_id])
+    creator = relationship(
+        "User", back_populates="created_diagnostics", foreign_keys=[created_by_user_id]
+    )
+
 
 class Treatment(Base):
     __tablename__ = "treatments"
@@ -118,12 +150,17 @@ class Treatment(Base):
     status = Column(String, nullable=False)  # active, suspended, extended, finished
     start_count = Column(Integer)  # 0 or 1
     dosage = Column(String)
-    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
     patient = relationship("Patient", back_populates="treatments")
-    creator = relationship("User", back_populates="created_treatments", foreign_keys=[created_by_user_id])
+    creator = relationship(
+        "User", back_populates="created_treatments", foreign_keys=[created_by_user_id]
+    )
+
 
 class Unit(Base):
     __tablename__ = "units"
@@ -133,6 +170,7 @@ class Unit(Base):
     description = Column(Text)
 
     beds = relationship("Bed", back_populates="unit")
+
 
 class Bed(Base):
     __tablename__ = "beds"
@@ -146,6 +184,7 @@ class Bed(Base):
     unit = relationship("Unit", back_populates="beds")
     bed_history = relationship("BedHistory", back_populates="bed")
 
+
 class BedHistory(Base):
     __tablename__ = "bed_history"
 
@@ -158,3 +197,15 @@ class BedHistory(Base):
 
     patient = relationship("Patient", back_populates="bed_history")
     bed = relationship("Bed", back_populates="bed_history")
+
+
+class Antibiotic(Base):
+    __tablename__ = "antibiotics"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False, unique=True)
+    type = Column(String(20), nullable=False)
+    default_start_count = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
