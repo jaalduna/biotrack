@@ -8,6 +8,7 @@ from .routers import (
     treatments,
     units,
     beds,
+    bed_configurations,
     bed_history,
     auth,
     teams,
@@ -41,6 +42,9 @@ app.include_router(diagnostics.router, prefix="/api/v1", tags=["diagnostics"])
 app.include_router(treatments.router, prefix="/api/v1", tags=["treatments"])
 app.include_router(units.router, prefix="/api/v1", tags=["units"])
 app.include_router(beds.router, prefix="/api/v1", tags=["beds"])
+app.include_router(
+    bed_configurations.router, prefix="/api/v1", tags=["bed_configurations"]
+)
 app.include_router(bed_history.router, prefix="/api/v1", tags=["bed_history"])
 app.include_router(teams.router, prefix="/api/v1", tags=["teams"])
 app.include_router(invitations.router, prefix="/api/v1", tags=["invitations"])

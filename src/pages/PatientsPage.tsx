@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Settings } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserHeader } from "@/components/UserHeader";
@@ -146,16 +146,28 @@ export function PatientsPageContent() {
         
         {/* Action Buttons Row */}
         <div className="mb-3 flex items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={loading}
-            className="gap-2"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="gap-2"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => navigate("/settings")}
+              className="gap-2"
+              size="sm"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
+          </div>
           
           <CreatePatientDialog onCreatePatient={handleCreatePatient} existingPatients={patients} />
         </div>
