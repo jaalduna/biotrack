@@ -422,32 +422,41 @@ export function PatientDetailPage() {
   };
 
    const handleSuspendRecord = async (recordId: string) => {
-    try {
-      const record = treatmentRecords.find(r => r.id === recordId);
-      if (!record) return;
+     try {
+       const record = treatmentRecords.find(r => r.id === recordId);
+       if (!record) return;
 
-      await treatmentsApi.update(recordId, {
-        id: record.id,
-        patientId: record.id,
-        antibioticName: record.antibioticName,
-        antibioticType: record.antibioticType,
-        startDate: record.startDate,
-        daysApplied: record.daysApplied,
-        programmedDays: record.programmedDays,
-        status: "suspended",
-        startCount: record.startCount,
-      });
+       const startDate = new Date(record.startDate);
+       const today = new Date();
+       const elapsedDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+       
+       await treatmentsApi.update(recordId, {
+         id: record.id,
+         patientId: record.id,
+         antibioticName: record.antibioticName,
+         antibioticType: record.antibioticType,
+         startDate: record.startDate,
+         daysApplied: elapsedDays,
+         programmedDays: elapsedDays,
+         status: "suspended",
+         startCount: record.startCount,
+       });
 
-      setTreatmentRecords((prev) =>
-        prev.map((r) =>
-          r.id === recordId ? { ...r, status: "suspended" as const } : r,
-        ),
-      );
-    } catch (error) {
-      console.error("Error suspending treatment:", error);
-      alert("Failed to suspend treatment");
-    }
-  };
+       setTreatmentRecords((prev) =>
+         prev.map((r) =>
+           r.id === recordId ? { 
+             ...r, 
+             status: "suspended" as const,
+             daysApplied: elapsedDays,
+             programmedDays: elapsedDays
+           } : r,
+         ),
+       );
+     } catch (error) {
+       console.error("Error suspending treatment:", error);
+       alert("Failed to suspend treatment");
+     }
+   };
 
   const handleFinalizeRecord = async (recordId: string) => {
     try {
