@@ -284,7 +284,7 @@ class AntibioticCreate(AntibioticBase):
 
 
 class Antibiotic(AntibioticBase):
-    id: str
+    id: UUID
     created_at: datetime
     updated_at: datetime
 

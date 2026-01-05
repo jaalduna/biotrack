@@ -42,9 +42,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserHeader } from "@/components/UserHeader";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
-import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi } from "@/services/Api";
+import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi, antibioticsApi } from "@/services/Api";
 import type { Patient as PatientType } from "@/models/Patients";
-import type { DiagnosticCategory, DiagnosticSubcategory } from "@/services/Api";
+import type { DiagnosticCategory, DiagnosticSubcategory, Antibiotic } from "@/services/Api";
 
 interface TreatmentRecord {
   id: string;
@@ -76,54 +76,6 @@ interface DiagnosticRecord {
    notes?: string;
    createdBy?: string;
  }
-
-const availableAntibiotics = [
-  {
-    name: "Amoxicillin",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Azithromycin",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Ciprofloxacin",
-    type: "antibiotic" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Doxycycline",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Metronidazole",
-    type: "antibiotic" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Penicillin",
-    type: "antibiotic" as const,
-    defaultStartCount: 1 as 0 | 1,
-  },
-  {
-    name: "Dexamethasone",
-    type: "corticoide" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Prednisone",
-    type: "corticoide" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-  {
-    name: "Hydrocortisone",
-    type: "corticoide" as const,
-    defaultStartCount: 0 as 0 | 1,
-  },
-];
 
 const getSeverityBadgeColor = (severity: string) => {
   switch (severity) {
@@ -159,6 +111,7 @@ export function PatientDetailPage() {
   const [categories, setCategories] = useState<DiagnosticCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [subcategories, setSubcategories] = useState<DiagnosticSubcategory[]>([]);
+  const [availableAntibiotics, setAvailableAntibiotics] = useState<Antibiotic[]>([]);
 
   // Fetch patient by RUT from URL
   useEffect(() => {
@@ -241,6 +194,18 @@ export function PatientDetailPage() {
       }
     }
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    async function loadAntibiotics() {
+      try {
+        const antibiotics = await antibioticsApi.getAll();
+        setAvailableAntibiotics(antibiotics);
+      } catch (err) {
+        console.error("Error loading antibiotics:", err);
+      }
+    }
+    loadAntibiotics();
   }, []);
 
   useEffect(() => {
@@ -369,7 +334,7 @@ export function PatientDetailPage() {
         if (antibiotic) {
           setAntibioticStartCounts((prevCounts) => ({
             ...prevCounts,
-            [antibioticName]: antibiotic.defaultStartCount,
+            [antibioticName]: antibiotic.default_start_count,
           }));
         }
         return [...prev, antibioticName];
@@ -410,7 +375,7 @@ export function PatientDetailPage() {
           daysApplied: 0,
           programmedDays: daysNum,
           status: "active",
-          startCount: antibioticStartCounts[antibioticName] || antibiotic.defaultStartCount,
+          startCount: antibioticStartCounts[antibioticName] || antibiotic.default_start_count,
           dosage: antibioticAmounts[antibioticName] || undefined,
         });
 
