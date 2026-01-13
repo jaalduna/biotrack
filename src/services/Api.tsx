@@ -718,16 +718,6 @@ export interface Treatment {
   updatedAt: string;
 }
 
-// Bed History API types
-interface BedHistoryApiResponse {
-  id: string;
-  patient_id: string;
-  bed_id: string;
-  start_date: string;
-  end_date?: string;
-  notes?: string;
-}
-
 export interface BedHistory {
   id: string;
   patientId: string;
@@ -770,29 +760,6 @@ function transformTreatmentToApi(treatment: Partial<Treatment>): any {
   };
 }
 
-// Transform bed history from API to frontend format
-function transformBedHistory(apiBedHistory: BedHistoryApiResponse): BedHistory {
-  return {
-    id: apiBedHistory.id,
-    patientId: apiBedHistory.patient_id,
-    bedId: apiBedHistory.bed_id,
-    startDate: apiBedHistory.start_date,
-    endDate: apiBedHistory.end_date,
-    notes: apiBedHistory.notes,
-  };
-}
-
-// Transform bed history from frontend to API format
-function transformBedHistoryToApi(bedHistory: Partial<BedHistory>): any {
-  return {
-    patient_id: bedHistory.patientId,
-    bed_id: bedHistory.bedId,
-    start_date: bedHistory.startDate,
-    end_date: bedHistory.endDate,
-    notes: bedHistory.notes,
-  };
-}
-
 let mockPatients: Patient[] = [
   {
     id: "1",
@@ -800,17 +767,17 @@ let mockPatients: Patient[] = [
     name: "John Doe",
     age: 45,
     status: "active",
-    unit: "ICU-A",
+    unit: "UCI",
     bedNumber: 1,
     hasEndingSoonProgram: false,
   },
   {
-    id: "2", 
+    id: "2",
     rut: "98.765.432-1",
     name: "Jane Smith",
     age: 32,
     status: "waiting",
-    unit: "ICU-B",
+    unit: "UTI",
     bedNumber: 2,
     hasEndingSoonProgram: true,
   },
@@ -819,13 +786,6 @@ let mockPatients: Patient[] = [
 let mockUnits: UnitApiResponse[] = [
   { id: "1", name: "ICU-A", description: "Intensive Care Unit A" },
   { id: "2", name: "ICU-B", description: "Intensive Care Unit B" },
-];
-
-let mockBeds: BedApiResponse[] = [
-  { id: "1", unit_id: "1", bed_number: 1, is_occupied: true, created_at: new Date().toISOString() },
-  { id: "2", unit_id: "1", bed_number: 2, is_occupied: false, created_at: new Date().toISOString() },
-  { id: "3", unit_id: "2", bed_number: 1, is_occupied: true, created_at: new Date().toISOString() },
-  { id: "4", unit_id: "2", bed_number: 2, is_occupied: false, created_at: new Date().toISOString() },
 ];
 
 let mockDiagnostics: DiagnosticApiResponse[] = [
@@ -855,16 +815,6 @@ let mockTreatments: TreatmentApiResponse[] = [
     dosage: "500mg 3x daily",
     created_at: "2024-01-15T10:00:00Z",
     updated_at: "2024-01-20T10:00:00Z"
-  },
-];
-
-let mockBedHistory: BedHistoryApiResponse[] = [
-  {
-    id: "1",
-    patient_id: "1",
-    bed_id: "1",
-    start_date: "2024-01-15",
-    notes: "Patient admitted to ICU-A"
   },
 ];
 
@@ -1078,7 +1028,7 @@ export const antibioticsApi = {
 
 export interface BedConfiguration {
   id: string;
-  unit: string;
+  unit: Unit;
   bedCount: number;
   startNumber: number;
   endNumber: number;
