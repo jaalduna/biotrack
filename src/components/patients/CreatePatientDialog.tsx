@@ -27,10 +27,28 @@ import { uciBeds, utiBeds } from "@/services/MockApi";
 interface CreatePatientDialogProps {
   onCreatePatient: (patient: Omit<Patient, "id">) => Promise<void>;
   existingPatients?: Patient[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CreatePatientDialog({ onCreatePatient, existingPatients = [] }: CreatePatientDialogProps) {
-  const [open, setOpen] = useState(false);
+export function CreatePatientDialog({
+  onCreatePatient,
+  existingPatients = [],
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: CreatePatientDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (isControlled && controlledOnOpenChange) {
+      controlledOnOpenChange(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     rut: "",

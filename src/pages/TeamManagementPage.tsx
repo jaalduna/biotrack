@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTeam } from "@/contexts/TeamContext";
 import { teamsApi, invitationsApi, subscriptionsApi } from "@/services/Api";
-import { UserHeader } from "@/components/UserHeader";
 import { LeaveTeamDialog } from "@/components/LeaveTeamDialog";
 import { TransferOwnershipDialog } from "@/components/TransferOwnershipDialog";
 import { Button } from "@/components/ui/button";
@@ -28,31 +27,21 @@ export function TeamManagementPage() {
 
   if (!team || !user) {
     return (
-      <div className="min-h-screen bg-background">
-        <UserHeader />
-        <div className="container max-w-4xl mx-auto p-6">
-          <Card>
-            <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground">You must be part of a team to access this page.</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-12 text-center">
+          <p className="text-muted-foreground">You must be part of a team to access this page.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-background">
-        <UserHeader />
-        <div className="container max-w-4xl mx-auto p-6">
-          <Card>
-            <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground">Only team admins and owners can access team settings.</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-12 text-center">
+          <p className="text-muted-foreground">Only team admins and owners can access team settings.</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -126,39 +115,30 @@ export function TeamManagementPage() {
   };
 
   return (
-      <div className="min-h-screen bg-background">
-        <UserHeader />
-        <div className="container max-w-4xl mx-auto p-6 space-y-6">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => navigate("/patients")}
-                  className="p-1 hover:bg-gray-100 rounded-md transition-colors"
-                  title="Back to Patients"
-                >
-                  <ArrowLeft className="h-5 w-5 text-gray-600" />
-                </button>
-                <h1 className="text-3xl font-bold">Team Settings</h1>
-              </div>
-              <p className="text-muted-foreground">Manage your team members and subscription</p>
-            </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-3xl font-bold">Team Settings</h1>
           </div>
+          <p className="text-muted-foreground">Manage your team members and subscription</p>
+        </div>
+      </div>
 
-        {error && (
-          <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-md">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-md">
+          {error}
+        </div>
+      )}
 
-        {success && (
-          <div className="bg-green-100 text-green-800 px-4 py-3 rounded-md">
-            {success}
-          </div>
-        )}
+      {success && (
+        <div className="bg-green-100 text-green-800 px-4 py-3 rounded-md">
+          {success}
+        </div>
+      )}
 
-        {/* Team Information */}
-        <Card>
+      {/* Team Information */}
+      <Card>
           <CardHeader>
             <CardTitle>Team Information</CardTitle>
             <CardDescription>Basic details about your team</CardDescription>
@@ -384,18 +364,17 @@ export function TeamManagementPage() {
           onOpenChange={setShowLeaveDialog}
         />
 
-        {/* Transfer Ownership Dialog */}
-        <TransferOwnershipDialog
-          open={showTransferDialog}
-          onOpenChange={setShowTransferDialog}
-          teamId={team.id}
-          members={members}
-          onOwnershipTransferred={() => {
-            refreshMembers(); // Refresh to show new roles
-            setSuccess("Ownership transferred successfully");
-          }}
-        />
-      </div>
+      {/* Transfer Ownership Dialog */}
+      <TransferOwnershipDialog
+        open={showTransferDialog}
+        onOpenChange={setShowTransferDialog}
+        teamId={team.id}
+        members={members}
+        onOwnershipTransferred={() => {
+          refreshMembers(); // Refresh to show new roles
+          setSuccess("Ownership transferred successfully");
+        }}
+      />
     </div>
   );
 }

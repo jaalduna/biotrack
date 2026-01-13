@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Settings } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserHeader } from "@/components/UserHeader";
-import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { CustomHeader } from "@/components/patients/CustomHeader";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { PatientsFilter } from "@/components/patients/patientsFilters/PatientsFilter";
 import { patientsApi } from "@/services/Api";
 import { EditPatient } from "@/components/patients/EditPatient";
@@ -24,6 +24,13 @@ import {
 } from "@/components/patients/context/PatientFilterContext";
 import type { Patient } from "@/models/Patients";
 
+// Keyboard shortcuts configuration
+const keyboardShortcuts = [
+  { key: "n", description: "New patient" },
+  { key: "r", description: "Refresh patients" },
+  { key: "s", description: "Focus search", alt: true },
+];
+
 export function PatientsPageContent() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -31,30 +38,25 @@ export function PatientsPageContent() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // If user doesn't have a team, show message and button to create one
   if (user && !user.team_id) {
     return (
-      <div className="min-h-screen bg-background">
-        <EmailVerificationBanner />
-        <UserHeader />
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <Card className="p-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-2xl font-semibold text-gray-900">Welcome to BioTrack!</h2>
-              <p className="text-muted-foreground">
-                You need to create a team first to start managing patients.
-              </p>
-              <Button 
-                onClick={() => navigate("/team/setup")}
-                size="lg"
-              >
-                Create Your Team
-              </Button>
-            </div>
-          </Card>
+      <Card className="p-12">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-semibold text-gray-900">Welcome to BioTrack!</h2>
+          <p className="text-muted-foreground">
+            You need to create a team first to start managing patients.
+          </p>
+          <Button
+            onClick={() => navigate("/team/setup")}
+            size="lg"
+          >
+            Create Your Team
+          </Button>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -111,6 +113,34 @@ export function PatientsPageContent() {
     setPatients((prev) => [...prev, created]);
   };
 
+  // Focus search input helper
+  const focusSearchInput = useCallback(() => {
+    const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }, []);
+
+  // Register keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: "n",
+      handler: () => setCreateDialogOpen(true),
+      description: "New patient",
+    },
+    {
+      key: "r",
+      handler: handleRefresh,
+      description: "Refresh patients",
+    },
+    {
+      key: "s",
+      alt: true,
+      handler: focusSearchInput,
+      description: "Focus search",
+    },
+  ]);
+
   const { searchQuery, selectedUnit, selectedBed, showOnlyAlerts } =
     usePatientFilter();
 
@@ -138,126 +168,120 @@ export function PatientsPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <EmailVerificationBanner />
-      <UserHeader />
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <CustomHeader />
-        
-        {/* Action Buttons Row */}
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="gap-2"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => navigate("/settings")}
-              className="gap-2"
-              size="sm"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </Button>
-          </div>
-          
-          <CreatePatientDialog onCreatePatient={handleCreatePatient} existingPatients={patients} />
+    <>
+      <CustomHeader />
+
+      {/* Action Buttons Row */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="gap-2"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-        
-        <PatientsFilter />
 
-        {/* Loading State */}
-        {loading && (
-          <Card className="p-12 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-              <p className="text-muted-foreground">Loading patients...</p>
-            </div>
-          </Card>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <Card className="p-12 text-center border-red-200 bg-red-50">
-            <p className="text-red-600">{error}</p>
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              className="mt-4"
-            >
-              Try Again
-            </Button>
-          </Card>
-        )}
-
-        {/* Results Count */}
-        {!loading && !error && (
-          <div className="mb-2 text-sm text-muted-foreground">
-            {filteredPatients.length}{" "}
-            {filteredPatients.length === 1 ? "patient" : "patients"} found
-          </div>
-        )}
-
-        {/* Patients List */}
-        {!loading && !error && (
-          <div className="space-y-2">
-            {filteredPatients.length === 0 ? (
-              <Card className="p-12 text-center">
-                <p className="text-muted-foreground">
-                  No patients found matching your search.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // This will be handled by PatientsFilter's clearFilters
-                    window.location.reload();
-                  }}
-                  className="mt-4"
-                >
-                  Clear All Filters
-                </Button>
-              </Card>
-            ) : (
-              filteredPatients.map((patient, index) => (
-                <Link key={patient.id} to={`/patients/${patient.rut}`}>
-                  <PatientResumeCard
-                    patient={patient}
-                    className={getRoundedClass(filteredPatients.length, index)}
-                    handleEditPatient={handleEditPatient}
-                  />
-                </Link>
-              ))
-            )}
-          </div>
-        )}
-
-        <Dialog
-          open={!!editingPatient}
-          onOpenChange={() => setEditingPatient(null)}
-        >
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Edit Patient</DialogTitle>
-            </DialogHeader>
-            {editingPatient && (
-              <EditPatient 
-                patient={editingPatient} 
-                onSave={handleSave}
-                allPatients={patients}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+        <CreatePatientDialog
+          onCreatePatient={handleCreatePatient}
+          existingPatients={patients}
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+        />
       </div>
-    </div>
+
+      <PatientsFilter />
+
+      {/* Loading State */}
+      {loading && (
+        <Card className="p-12 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Loading patients...</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Card className="p-12 text-center border-red-200 bg-red-50">
+          <p className="text-red-600">{error}</p>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            className="mt-4"
+          >
+            Try Again
+          </Button>
+        </Card>
+      )}
+
+      {/* Results Count */}
+      {!loading && !error && (
+        <div className="mb-2 text-sm text-muted-foreground">
+          {filteredPatients.length}{" "}
+          {filteredPatients.length === 1 ? "patient" : "patients"} found
+        </div>
+      )}
+
+      {/* Patients List */}
+      {!loading && !error && (
+        <div className="space-y-2">
+          {filteredPatients.length === 0 ? (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground">
+                No patients found matching your search.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // This will be handled by PatientsFilter's clearFilters
+                  window.location.reload();
+                }}
+                className="mt-4"
+              >
+                Clear All Filters
+              </Button>
+            </Card>
+          ) : (
+            filteredPatients.map((patient, index) => (
+              <Link key={patient.id} to={`/patients/${patient.rut}`}>
+                <PatientResumeCard
+                  patient={patient}
+                  className={getRoundedClass(filteredPatients.length, index)}
+                  handleEditPatient={handleEditPatient}
+                />
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+
+      <Dialog
+        open={!!editingPatient}
+        onOpenChange={() => setEditingPatient(null)}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Patient</DialogTitle>
+          </DialogHeader>
+          {editingPatient && (
+            <EditPatient
+              patient={editingPatient}
+              onSave={handleSave}
+              allPatients={patients}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard shortcuts help overlay - triggered by pressing "?" */}
+      <KeyboardShortcutsHelp shortcuts={keyboardShortcuts} />
+    </>
   );
 }
 

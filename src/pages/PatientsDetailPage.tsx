@@ -39,8 +39,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { UserHeader } from "@/components/UserHeader";
-import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
 import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi, antibioticsApi } from "@/services/Api";
 import type { Patient as PatientType } from "@/models/Patients";
@@ -659,32 +657,29 @@ export function PatientDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <EmailVerificationBanner />
-      <UserHeader />
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Loading State */}
-        {loading && (
-          <Card className="p-12 text-center">
-            <p className="text-muted-foreground">Loading patient details...</p>
-          </Card>
-        )}
+    <>
+      {/* Loading State */}
+      {loading && (
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">Loading patient details...</p>
+        </Card>
+      )}
 
-        {/* Error State */}
-        {error && (
-          <Card className="p-12 text-center border-red-200 bg-red-50">
-            <p className="text-red-600">{error}</p>
-            <Link to="/patients">
-              <Button variant="outline" className="mt-4">
-                Back to Patients
-              </Button>
-            </Link>
-          </Card>
-        )}
+      {/* Error State */}
+      {error && (
+        <Card className="p-12 text-center border-red-200 bg-red-50">
+          <p className="text-red-600">{error}</p>
+          <Link to="/patients">
+            <Button variant="outline" className="mt-4">
+              Back to Patients
+            </Button>
+          </Link>
+        </Card>
+      )}
 
-        {/* Patient Details */}
-        {!loading && !error && patient && (
-          <>
+      {/* Patient Details */}
+      {!loading && !error && patient && (
+        <>
             {/* Header with Back Button */}
             <div className="mb-8">
               <Link to="/patients">
@@ -1527,15 +1522,14 @@ export function PatientDetailPage() {
           </Card>
         </div>
 
-        <div>
-          <h2 className="mb-4 text-2xl font-bold text-foreground">
-            Antibiotic Treatment Timeline
-          </h2>
-          <AntibioticTimeline treatments={timelineTreatments} />
-        </div>
-          </>
-        )}
-      </div>
-    </div>
+          <div>
+            <h2 className="mb-4 text-2xl font-bold text-foreground">
+              Antibiotic Treatment Timeline
+            </h2>
+            <AntibioticTimeline treatments={timelineTreatments} />
+          </div>
+        </>
+      )}
+    </>
   );
 }
