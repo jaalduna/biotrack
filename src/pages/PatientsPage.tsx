@@ -13,6 +13,10 @@ import { EditPatient } from "@/components/patients/EditPatient";
 import { PatientResumeCard } from "@/components/patients/PatientResumeCard";
 import { CreatePatientDialog } from "@/components/patients/CreatePatientDialog";
 import {
+  NoPatientsEmptyState,
+  NoSearchResultsEmptyState,
+} from "@/components/EmptyState";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -141,8 +145,23 @@ export function PatientsPageContent() {
     },
   ]);
 
-  const { searchQuery, selectedUnit, selectedBed, showOnlyAlerts } =
-    usePatientFilter();
+  const {
+    searchQuery,
+    setSearchQuery,
+    selectedUnit,
+    setSelectedUnit,
+    selectedBed,
+    setSelectedBed,
+    showOnlyAlerts,
+    setShowOnlyAlerts,
+  } = usePatientFilter();
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setSelectedUnit("all");
+    setSelectedBed("all");
+    setShowOnlyAlerts(false);
+  }, [setSearchQuery, setSelectedUnit, setSelectedBed, setShowOnlyAlerts]);
 
   const filteredPatients = patients.filter((patient) => {
     const query = searchQuery.toLowerCase();
@@ -220,8 +239,8 @@ export function PatientsPageContent() {
         </Card>
       )}
 
-      {/* Results Count */}
-      {!loading && !error && (
+      {/* Results Count - only show when there are patients */}
+      {!loading && !error && patients.length > 0 && (
         <div className="mb-2 text-sm text-muted-foreground">
           {filteredPatients.length}{" "}
           {filteredPatients.length === 1 ? "patient" : "patients"} found
@@ -231,22 +250,17 @@ export function PatientsPageContent() {
       {/* Patients List */}
       {!loading && !error && (
         <div className="space-y-2">
-          {filteredPatients.length === 0 ? (
-            <Card className="p-12 text-center">
-              <p className="text-muted-foreground">
-                No patients found matching your search.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // This will be handled by PatientsFilter's clearFilters
-                  window.location.reload();
-                }}
-                className="mt-4"
-              >
-                Clear All Filters
-              </Button>
-            </Card>
+          {patients.length === 0 ? (
+            // No patients at all - first time user
+            <NoPatientsEmptyState
+              onCreatePatient={() => setCreateDialogOpen(true)}
+            />
+          ) : filteredPatients.length === 0 ? (
+            // Has patients but none match filters
+            <NoSearchResultsEmptyState
+              onClearFilters={clearFilters}
+              searchQuery={searchQuery}
+            />
           ) : (
             filteredPatients.map((patient, index) => (
               <Link key={patient.id} to={`/patients/${patient.rut}`}>

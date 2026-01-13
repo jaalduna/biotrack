@@ -12,6 +12,7 @@ import {
   Pill,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface NavItem {
   name: string;
@@ -62,18 +63,18 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 transition-all duration-300 flex flex-col",
+        "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300 flex flex-col",
         collapsed ? "w-16" : "w-64"
       )}
     >
       {/* Logo / Brand */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         {!collapsed && (
           <Link to="/patients" className="flex items-center gap-2">
             <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
               <Pill className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg text-gray-900">BioTrack</span>
+            <span className="font-bold text-lg text-foreground">BioTrack</span>
           </Link>
         )}
         {collapsed && (
@@ -87,8 +88,8 @@ export function Sidebar() {
 
       {/* Team info (when expanded) */}
       {!collapsed && team && (
-        <div className="px-4 py-3 border-b border-gray-100">
-          <p className="text-sm font-medium text-gray-900 truncate">{team.name}</p>
+        <div className="px-4 py-3 border-b border-border/50">
+          <p className="text-sm font-medium text-foreground truncate">{team.name}</p>
           <p className="text-xs text-muted-foreground">
             {team.subscription_plan || "Free"} Plan
           </p>
@@ -107,7 +108,7 @@ export function Sidebar() {
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
                   ? "bg-primary/10 text-primary"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 collapsed && "justify-center px-2"
               )}
               title={collapsed ? item.name : undefined}
@@ -115,7 +116,7 @@ export function Sidebar() {
               <item.icon
                 className={cn(
                   "flex-shrink-0 h-5 w-5",
-                  isActive ? "text-primary" : "text-gray-400"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )}
               />
               {!collapsed && <span>{item.name}</span>}
@@ -124,8 +125,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="p-2 border-t border-gray-200">
+      {/* Theme toggle and collapse */}
+      <div className="p-2 border-t border-border space-y-1">
+        <ThemeToggle collapsed={collapsed} />
         <Button
           variant="ghost"
           size="sm"

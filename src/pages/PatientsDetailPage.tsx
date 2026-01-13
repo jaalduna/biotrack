@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
+import { NoTreatmentsEmptyState, NoDiagnosticsEmptyState } from "@/components/EmptyState";
 import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi, antibioticsApi } from "@/services/Api";
 import type { Patient as PatientType } from "@/models/Patients";
 import type { DiagnosticCategory, DiagnosticSubcategory, Antibiotic } from "@/services/Api";
@@ -1015,22 +1016,15 @@ export function PatientDetailPage() {
           </div>
 
           <Card className="overflow-hidden">
-            {filteredTreatmentRecords.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="mb-4 text-muted-foreground">
-                  {treatmentRecords.length === 0
-                    ? "No treatment records yet"
-                    : "No treatments match the selected filters"}
+            {treatmentRecords.length === 0 ? (
+              <NoTreatmentsEmptyState
+                onAddTreatment={() => setIsNewProgramOpen(true)}
+              />
+            ) : filteredTreatmentRecords.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-muted-foreground">
+                  No treatments match the selected filters
                 </p>
-                {treatmentRecords.length === 0 && (
-                  <Button
-                    onClick={() => setIsNewProgramOpen(true)}
-                    className="gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Start New Program
-                  </Button>
-                )}
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -1351,18 +1345,9 @@ export function PatientDetailPage() {
           
           <Card className="overflow-hidden">
             {diagnostics.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="mb-4 text-muted-foreground">
-                  No diagnostics recorded yet
-                </p>
-                <Button
-                  onClick={() => handleOpenDiagnosisDialog(null)}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add First Diagnosis
-                </Button>
-              </div>
+              <NoDiagnosticsEmptyState
+                onAddDiagnostic={() => handleOpenDiagnosisDialog(null)}
+              />
             ) : (
               <div className="divide-y divide-border">
                 {diagnostics.map((diagnostic) => (

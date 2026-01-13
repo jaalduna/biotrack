@@ -6,17 +6,20 @@ import { router } from "./router/router.app";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TeamProvider } from "./contexts/TeamContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "./components/Toaster";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AuthProvider>
-      <TeamProvider>
-        <SidebarProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </SidebarProvider>
-      </TeamProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <TeamProvider>
+          <SidebarProvider>
+            <RouterProvider router={router} />
+            <Toaster />
+          </SidebarProvider>
+        </TeamProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </StrictMode>
 );
