@@ -27,8 +27,19 @@ if [ ! -d ".venv" ] && [ ! -d "venv" ]; then
     poetry install
 fi
 
+# Development environment variables
+export DATABASE_URL="postgresql://user:password@localhost:5434/biotrack"
+export SECRET_KEY="dev-secret-key-do-not-use-in-production-12345678901234567890"
+
 echo -e "${YELLOW}Running database migrations...${NC}"
 poetry run alembic upgrade head
+
+echo -e "${YELLOW}Seeding database with antibiotics...${NC}"
+poetry run python seed_antibiotics.py
+
+echo -e "${YELLOW}Seeding database with diagnostic categories...${NC}"
+poetry run python seed_diagnostic_categories.py
+
 cd ..
 
 echo ""

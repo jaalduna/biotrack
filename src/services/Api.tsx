@@ -1,7 +1,33 @@
 import type { Patient } from "@/models/Patients";
 import type { Unit } from "@/models/Units";
 
-const API_BASE_URL = "http://localhost:8000/api/v1";
+// Runtime config interface (injected by docker-entrypoint.sh in production)
+declare global {
+  interface Window {
+    __RUNTIME_CONFIG__?: {
+      API_BASE_URL: string;
+    };
+  }
+}
+
+// Get API URL: prefer runtime config, then build-time config, then default
+function getApiBaseUrl(): string {
+  // Runtime config (production Docker)
+  if (typeof window !== "undefined" && window.__RUNTIME_CONFIG__?.API_BASE_URL) {
+    return window.__RUNTIME_CONFIG__.API_BASE_URL;
+  }
+  // Build-time config (Vite)
+  if (typeof __API_BASE_URL__ !== "undefined") {
+    return __API_BASE_URL__;
+  }
+  // Default fallback
+  return "http://localhost:8000/api/v1";
+}
+
+// Declare the build-time constant
+declare const __API_BASE_URL__: string | undefined;
+
+const API_BASE_URL = getApiBaseUrl();
 
 function isBetaMode(): boolean {
   return localStorage.getItem("biotrack_beta_mode") === "true";

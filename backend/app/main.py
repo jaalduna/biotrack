@@ -1,6 +1,8 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine
+from sqlalchemy import text
+from .database import engine, SessionLocal
 from .models import Base
 from .routers import (
     patients,
@@ -23,17 +25,25 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="BioTrack API", version="1.0.0")
 
-# CORS for frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# CORS configuration from environment
+def get_cors_origins() -> list[str]:
+    """Get CORS origins from environment variable or use defaults."""
+    cors_origins = os.getenv("CORS_ORIGINS", "")
+    if cors_origins:
+        return [origin.strip() for origin in cors_origins.split(",")]
+    # Default development origins
+    return [
         "http://localhost:5173",
         "http://localhost:5174",
-        "https://your-frontend-domain.com",
-    ],  # Update for production
+        "http://localhost:3000",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auth.router, prefix="/api/v1")
@@ -58,3 +68,21 @@ app.include_router(
 @app.get("/")
 def read_root():
     return {"message": "BioTrack API is running"}
+
+
+@app.get("/api/v1/health")
+def health_check():
+    """Health check endpoint for load balancers and container orchestration."""
+    return {"status": "healthy", "service": "biotrack-api"}
+
+
+@app.get("/api/v1/health/ready")
+def readiness_check():
+    """Readiness check - verifies database connectivity."""
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        return {"status": "ready", "database": "connected"}
+    except Exception as e:
+        return {"status": "not_ready", "database": "disconnected", "error": str(e)}

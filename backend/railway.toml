@@ -1,0 +1,11 @@
+# Railway configuration for BioTrack Backend API
+# This file configures Railway deployment settings for the backend service
+
+[build]
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
