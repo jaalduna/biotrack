@@ -22,10 +22,11 @@ RUN npm run build
 FROM nginx:alpine
 
 # Install envsubst for runtime environment variable substitution
-RUN apk add --no-cache gettext
+RUN apk add --no-cache gettext && \
+    mkdir -p /etc/nginx/templates
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx configuration as template
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -34,11 +35,12 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Create non-root user for security
+# Create non-root user for security and set permissions
 RUN adduser -D -g '' appuser && \
     chown -R appuser:appuser /usr/share/nginx/html && \
     chown -R appuser:appuser /var/cache/nginx && \
     chown -R appuser:appuser /var/log/nginx && \
+    chown -R appuser:appuser /etc/nginx/conf.d && \
     touch /var/run/nginx.pid && \
     chown -R appuser:appuser /var/run/nginx.pid
 

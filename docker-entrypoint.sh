@@ -17,10 +17,9 @@ EOF
 
 echo "Runtime config created with API_BASE_URL: ${API_BASE_URL}"
 
-# Substitute PORT variable in nginx config
+# Substitute PORT variable in nginx config from template
 export PORT
-envsubst '${PORT}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/default.conf.tmp
-mv /etc/nginx/conf.d/default.conf.tmp /etc/nginx/conf.d/default.conf
+envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
 echo "Nginx configured to listen on port: ${PORT}"
 
