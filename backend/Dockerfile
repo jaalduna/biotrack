@@ -1,4 +1,5 @@
 # Backend Dockerfile for BioTrack API
+# Railway deployment - force rebuild 2026-01-13
 FROM python:3.11-slim
 
 # Set environment variables
