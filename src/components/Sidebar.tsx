@@ -4,7 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTeam } from "@/contexts/TeamContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import {
+  LayoutDashboard,
   Users,
+  BarChart3,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -23,9 +25,19 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
     name: "Patients",
     href: "/patients",
     icon: Users,
+  },
+  {
+    name: "Analytics",
+    href: "/analytics",
+    icon: BarChart3,
   },
   {
     name: "Bed Settings",
@@ -47,8 +59,8 @@ export function Sidebar() {
   const { collapsed, toggle } = useSidebar();
 
   const isActiveRoute = (href: string) => {
-    if (href === "/patients") {
-      return location.pathname === "/patients" || location.pathname === "/";
+    if (href === "/dashboard") {
+      return location.pathname === "/dashboard" || location.pathname === "/";
     }
     return location.pathname.startsWith(href);
   };

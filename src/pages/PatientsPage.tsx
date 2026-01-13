@@ -177,13 +177,20 @@ export function PatientsPageContent() {
   });
 
   const getRoundedClass = (length: number, index: number) => {
-    if (index === 0) {
-      return "rounded-t-m rounded-b-none";
-    } else if (index === length - 1) {
-      return "rounded-t-none rounded-b-m ";
-    } else {
-      return "rounded-none";
+    // Single item - fully rounded
+    if (length === 1) {
+      return "rounded-md";
     }
+    // First item
+    if (index === 0) {
+      return "rounded-t-md rounded-b-none";
+    }
+    // Last item
+    if (index === length - 1) {
+      return "rounded-t-none rounded-b-md";
+    }
+    // Middle items
+    return "rounded-none";
   };
 
   return (

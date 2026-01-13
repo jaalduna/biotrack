@@ -1,7 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { X, TrendingUp, ZoomIn, ZoomOut, Calendar, Pause, Play, CheckCircle2 } from "lucide-react";
 
 interface TreatmentPeriod {
   id: string;
@@ -18,10 +26,36 @@ interface AntibioticTimelineProps {
   treatments: TreatmentPeriod[];
 }
 
+type ZoomLevel = "day" | "week" | "month";
+
+// Color palette for different antibiotics (color-blind friendly)
+const ANTIBIOTIC_COLORS = [
+  { bg: "bg-blue-100 dark:bg-blue-900/50", fill: "bg-blue-500", border: "border-blue-300 dark:border-blue-700", text: "text-blue-700 dark:text-blue-300" },
+  { bg: "bg-emerald-100 dark:bg-emerald-900/50", fill: "bg-emerald-500", border: "border-emerald-300 dark:border-emerald-700", text: "text-emerald-700 dark:text-emerald-300" },
+  { bg: "bg-violet-100 dark:bg-violet-900/50", fill: "bg-violet-500", border: "border-violet-300 dark:border-violet-700", text: "text-violet-700 dark:text-violet-300" },
+  { bg: "bg-amber-100 dark:bg-amber-900/50", fill: "bg-amber-500", border: "border-amber-300 dark:border-amber-700", text: "text-amber-700 dark:text-amber-300" },
+  { bg: "bg-rose-100 dark:bg-rose-900/50", fill: "bg-rose-500", border: "border-rose-300 dark:border-rose-700", text: "text-rose-700 dark:text-rose-300" },
+  { bg: "bg-cyan-100 dark:bg-cyan-900/50", fill: "bg-cyan-500", border: "border-cyan-300 dark:border-cyan-700", text: "text-cyan-700 dark:text-cyan-300" },
+  { bg: "bg-orange-100 dark:bg-orange-900/50", fill: "bg-orange-500", border: "border-orange-300 dark:border-orange-700", text: "text-orange-700 dark:text-orange-300" },
+  { bg: "bg-teal-100 dark:bg-teal-900/50", fill: "bg-teal-500", border: "border-teal-300 dark:border-teal-700", text: "text-teal-700 dark:text-teal-300" },
+];
+
 export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
   // IMPORTANT: All hooks must be called at the top level before any conditional returns
   // This follows React's Rules of Hooks
-  
+
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("day");
+
+  // Map antibiotic names to colors
+  const antibioticColorMap = useMemo(() => {
+    const colorMap = new Map<string, typeof ANTIBIOTIC_COLORS[0]>();
+    const uniqueAntibiotics = [...new Set(treatments.map(t => t.antibioticName))];
+    uniqueAntibiotics.forEach((name, index) => {
+      colorMap.set(name, ANTIBIOTIC_COLORS[index % ANTIBIOTIC_COLORS.length]);
+    });
+    return colorMap;
+  }, [treatments]);
+
   // Calculate the timeline data
   const timelineData = useMemo(() => {
     if (treatments.length === 0) {
@@ -139,6 +173,128 @@ export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
     return totals;
   }, [treatments]);
 
+  // Generate time axis markers based on zoom level
+  const timeAxisMarkers = useMemo(() => {
+    if (!timelineData) return [];
+
+    const markers: { date: Date; position: number; label: string; isMinor: boolean }[] = [];
+    const startDate = new Date(minDate);
+    const endDate = new Date(maxDate);
+
+    // Set to start of day
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    const current = new Date(startDate);
+
+    if (zoomLevel === "day") {
+      // Show every day
+      while (current <= endDate) {
+        const position = (current.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays;
+        markers.push({
+          date: new Date(current),
+          position: Math.min(position, 1),
+          label: current.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }),
+          isMinor: current.getDay() !== 1, // Monday is major
+        });
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (zoomLevel === "week") {
+      // Show weekly markers (Mondays)
+      // Move to next Monday
+      while (current.getDay() !== 1) {
+        current.setDate(current.getDate() + 1);
+      }
+      while (current <= endDate) {
+        const position = (current.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays;
+        if (position >= 0 && position <= 1) {
+          markers.push({
+            date: new Date(current),
+            position,
+            label: current.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            isMinor: false,
+          });
+        }
+        current.setDate(current.getDate() + 7);
+      }
+    } else {
+      // Show monthly markers (1st of each month)
+      current.setDate(1);
+      current.setMonth(current.getMonth() + 1);
+      while (current <= endDate) {
+        const position = (current.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays;
+        if (position >= 0 && position <= 1) {
+          markers.push({
+            date: new Date(current),
+            position,
+            label: current.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+            isMinor: false,
+          });
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+
+    return markers;
+  }, [timelineData, minDate, maxDate, totalDays, zoomLevel]);
+
+  // Extract key events from treatments
+  const keyEvents = useMemo(() => {
+    if (!timelineData) return [];
+
+    const events: {
+      date: Date;
+      position: number;
+      type: "start" | "pause" | "resume" | "finish" | "extend";
+      antibioticName: string;
+      description: string;
+    }[] = [];
+
+    treatments.forEach((treatment) => {
+      // Start event
+      const startPosition = (treatment.startDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays;
+      events.push({
+        date: treatment.startDate,
+        position: startPosition,
+        type: "start",
+        antibioticName: treatment.antibioticName,
+        description: `Started ${treatment.antibioticName}`,
+      });
+
+      // End/status event
+      if (treatment.status === "finished") {
+        const endPosition = ((treatment.endDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) + 1) / totalDays;
+        events.push({
+          date: treatment.endDate,
+          position: Math.min(endPosition, 1),
+          type: "finish",
+          antibioticName: treatment.antibioticName,
+          description: `Completed ${treatment.antibioticName}`,
+        });
+      } else if (treatment.status === "suspended") {
+        const endPosition = ((treatment.endDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) + 1) / totalDays;
+        events.push({
+          date: treatment.endDate,
+          position: Math.min(endPosition, 1),
+          type: "pause",
+          antibioticName: treatment.antibioticName,
+          description: `Suspended ${treatment.antibioticName}`,
+        });
+      } else if (treatment.status === "extended") {
+        const endPosition = ((treatment.endDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) + 1) / totalDays;
+        events.push({
+          date: treatment.endDate,
+          position: Math.min(endPosition, 1),
+          type: "extend",
+          antibioticName: treatment.antibioticName,
+          description: `Extended ${treatment.antibioticName}`,
+        });
+      }
+    });
+
+    return events.sort((a, b) => a.position - b.position);
+  }, [treatments, minDate, totalDays, timelineData]);
+
   // Now we can safely do conditional returns after all hooks are called
   if (!timelineData || timelineData.tracks.length === 0) {
     return (
@@ -203,53 +359,122 @@ export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
 
       {/* Timeline Visualization */}
       <Card className="p-6">
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-foreground">
-            Treatment Timeline
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {minDate.toLocaleDateString()} - {maxDate.toLocaleDateString()}
-          </p>
+        <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">
+              Treatment Timeline
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {minDate.toLocaleDateString()} - {maxDate.toLocaleDateString()}
+            </p>
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 mr-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  if (zoomLevel === "month") setZoomLevel("week");
+                  else if (zoomLevel === "week") setZoomLevel("day");
+                }}
+                disabled={zoomLevel === "day"}
+                title="Zoom In"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  if (zoomLevel === "day") setZoomLevel("week");
+                  else if (zoomLevel === "week") setZoomLevel("month");
+                }}
+                disabled={zoomLevel === "month"}
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </div>
+            <Select value={zoomLevel} onValueChange={(v: ZoomLevel) => setZoomLevel(v)}>
+              <SelectTrigger className="w-[120px] h-8">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Day</SelectItem>
+                <SelectItem value="week">Week</SelectItem>
+                <SelectItem value="month">Month</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Outer container with right padding for overflow space */}
         <div className="pr-12">
-          {/* Time markers - inner container for percentage positioning */}
-          <div className="relative mb-1 border-b border-border h-10">
-            {/* Treatment start/end ticks and date labels (always 45 degrees) */}
-            {treatmentBoundaries.map((boundary, index) => (
+          {/* Time axis markers based on zoom level */}
+          <div className="relative mb-1 border-b border-border h-8">
+            {timeAxisMarkers.map((marker, index) => (
               <div
-                key={`boundary-${index}`}
-                className="absolute bottom-0 flex flex-col items-start"
-                style={{ left: `${boundary.position * 100}%` }}
-                title={`${boundary.antibioticName} ${boundary.type === 'start' ? 'starts' : 'ends'}: ${boundary.date.toLocaleDateString()}`}
+                key={`marker-${index}`}
+                className={`absolute bottom-0 flex flex-col items-center ${marker.isMinor ? "opacity-50" : ""}`}
+                style={{ left: `${marker.position * 100}%`, transform: "translateX(-50%)" }}
               >
-                {/* Date label rotated 45 degrees */}
-                <span 
-                  className={`text-[10px] whitespace-nowrap origin-bottom-left mb-0.5 ${boundary.type === 'start' ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400'}`}
-                  style={{ transform: 'rotate(-45deg) translateY(-100%)' }}
-                >
-                  {boundary.label}
+                <span className={`text-[10px] whitespace-nowrap mb-0.5 ${marker.isMinor ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                  {marker.label}
                 </span>
-                {/* Tick mark below the label */}
-                <div className={`w-0.5 h-2 ${boundary.type === 'start' ? 'bg-green-400' : 'bg-red-400'}`} />
+                <div className={`w-px ${marker.isMinor ? "h-1 bg-muted-foreground/30" : "h-2 bg-border"}`} />
               </div>
             ))}
           </div>
+
+          {/* Key events row */}
+          {keyEvents.length > 0 && (
+            <div className="relative h-6 mb-2 border-b border-border/50">
+              {keyEvents.map((event, index) => {
+                const EventIcon = event.type === "start" ? Play
+                  : event.type === "pause" ? Pause
+                  : event.type === "finish" ? CheckCircle2
+                  : TrendingUp;
+                const eventColor = event.type === "start" ? "text-green-500"
+                  : event.type === "pause" ? "text-red-500"
+                  : event.type === "finish" ? "text-blue-500"
+                  : "text-amber-500";
+
+                return (
+                  <div
+                    key={`event-${index}`}
+                    className="absolute top-1/2 -translate-y-1/2 group cursor-pointer"
+                    style={{ left: `${event.position * 100}%`, transform: `translateX(-50%) translateY(-50%)` }}
+                  >
+                    <EventIcon className={`h-3.5 w-3.5 ${eventColor}`} />
+                    <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg group-hover:block z-20 border border-border">
+                      <div className="font-medium">{event.description}</div>
+                      <div className="text-muted-foreground">{event.date.toLocaleDateString()}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Timeline tracks - inner container for percentage positioning */}
           <div className="space-y-4">
            {tracks.map(([antibioticName, periods]) => {
              const total = antibioticTotals[antibioticName];
              const antibioticType = periods[0].antibioticType;
-             
-             console.log(`Rendering antibiotic ${antibioticName}:`, { periodsCount: periods.length, total });
+             const colorScheme = antibioticColorMap.get(antibioticName) || ANTIBIOTIC_COLORS[0];
 
              return (
               <div key={antibioticName} className="space-y-2">
                 {/* Track header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    {/* Color indicator */}
+                    <div className={`w-3 h-3 rounded-full ${colorScheme.fill}`} />
                     <span className="text-sm font-medium text-foreground">
                       {antibioticName}
                     </span>
@@ -263,7 +488,7 @@ export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
                 </div>
 
                 {/* Track visualization */}
-                <div className="relative h-6">
+                <div className="relative h-8 bg-muted/30 rounded">
                   {periods.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                       No periods
@@ -274,36 +499,33 @@ export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
                          period.startDate,
                          period.endDate,
                        );
-                       
+
                        const isActive = period.status === "active";
                        const isFinished = period.status === "finished";
                        const isSuspended = period.status === "suspended";
                        const isExtended = period.status === "extended";
 
-                       // Status-based colors (darker for progress, lighter for background)
-                       const statusColor = isActive
-                         ? { dark: "bg-blue-500", light: "bg-blue-200 dark:bg-blue-900" }
-                         : isFinished
-                           ? { dark: "bg-green-500", light: "bg-green-200 dark:bg-green-900" }
-                           : isSuspended
-                             ? { dark: "bg-red-500", light: "bg-red-200 dark:bg-red-900" }
-                             : { dark: "bg-yellow-500", light: "bg-yellow-200 dark:bg-yellow-900" }; // extended
-
                        // Calculate progress percentage (daysApplied / programmedDays)
-                       const progressPercent = period.programmedDays > 0 
-                         ? (period.daysApplied / period.programmedDays) * 100 
+                       const progressPercent = period.programmedDays > 0
+                         ? (period.daysApplied / period.programmedDays) * 100
                          : 0;
+
+                       // Status indicator style
+                       const statusIndicator = isActive ? "ring-2 ring-blue-400 ring-offset-1"
+                         : isSuspended ? "ring-2 ring-red-400 ring-offset-1"
+                         : isExtended ? "ring-2 ring-amber-400 ring-offset-1"
+                         : "";
 
                        return (
                          <div
                            key={period.id}
-                           className={`absolute top-1 h-4 rounded ${statusColor.light} group cursor-pointer transition-all hover:ring-2 hover:ring-foreground relative`}
+                           className={`absolute top-1 h-6 rounded border ${colorScheme.border} ${colorScheme.bg} ${statusIndicator} group cursor-pointer transition-all hover:ring-2 hover:ring-foreground/50 relative overflow-hidden`}
                            style={position}
                            title={`${antibioticName}: ${period.startDate.toLocaleDateString()} - ${period.endDate.toLocaleDateString()} (${period.daysApplied}/${period.programmedDays} days) - ${period.status}`}
                          >
                            {/* Progress fill overlay */}
-                           <div 
-                             className={`absolute inset-y-0 left-0 rounded-l ${statusColor.dark} transition-all duration-300`}
+                           <div
+                             className={`absolute inset-y-0 left-0 ${colorScheme.fill} opacity-80 transition-all duration-300`}
                              style={{ width: `${progressPercent}%` }}
                            />
 
@@ -356,43 +578,76 @@ export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
 
       {/* Legend */}
       <Card className="p-4">
-        <div className="space-y-3">
-          <div className="mb-3 pb-3 border-b border-border">
+        <div className="space-y-4">
+          {/* Antibiotic Colors */}
+          <div className="pb-3 border-b border-border">
+            <p className="font-medium text-foreground text-sm mb-2">Antibiotic Colors:</p>
+            <div className="flex flex-wrap gap-3">
+              {tracks.map(([antibioticName]) => {
+                const color = antibioticColorMap.get(antibioticName);
+                return (
+                  <div key={antibioticName} className="flex items-center gap-1.5">
+                    <div className={`w-3 h-3 rounded-full ${color?.fill || "bg-gray-400"}`} />
+                    <span className="text-xs text-muted-foreground">{antibioticName}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Progress Visualization */}
+          <div className="pb-3 border-b border-border">
             <p className="font-medium text-foreground text-sm mb-2">Progress Visualization:</p>
-            <p className="text-xs text-muted-foreground mb-2">Light background shows total programmed duration. Colored fill shows actual progress (daysApplied / programmedDays).</p>
+            <p className="text-xs text-muted-foreground mb-2">Light background shows total programmed duration. Colored fill shows actual progress.</p>
             <div className="flex items-center gap-2">
-              <div className="flex-1 h-3 rounded bg-blue-200 dark:bg-blue-900 relative overflow-hidden">
-                <div className="absolute inset-y-0 left-0 bg-blue-500" style={{ width: "60%" }}></div>
+              <div className="flex-1 h-4 rounded border border-blue-300 bg-blue-100 dark:bg-blue-900/50 relative overflow-hidden">
+                <div className="absolute inset-y-0 left-0 bg-blue-500 opacity-80" style={{ width: "60%" }}></div>
               </div>
               <span className="text-xs text-muted-foreground">60% Complete</span>
             </div>
           </div>
 
-          <div>
-            <p className="font-medium text-foreground text-sm mb-2">Status Indicators:</p>
-            <div className="grid grid-cols-2 gap-2">
+          {/* Key Events */}
+          <div className="pb-3 border-b border-border">
+            <p className="font-medium text-foreground text-sm mb-2">Timeline Events:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-4 w-8 rounded bg-blue-200 dark:bg-blue-900 text-[10px] text-blue-600 dark:text-blue-400 font-bold">
-                  ●
-                </div>
-                <span className="text-muted-foreground text-xs">Active</span>
+                <Play className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-muted-foreground text-xs">Started</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-4 w-8 rounded bg-green-200 dark:bg-green-900 text-[12px] text-green-600 dark:text-green-400 font-bold">
-                  ✓
-                </div>
-                <span className="text-muted-foreground text-xs">Finished</span>
+                <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
+                <span className="text-muted-foreground text-xs">Completed</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-4 w-8 rounded bg-red-200 dark:bg-red-900 text-red-600 dark:text-red-400">
-                  <X className="h-3 w-3 stroke-[3]" />
-                </div>
+                <Pause className="h-3.5 w-3.5 text-red-500" />
                 <span className="text-muted-foreground text-xs">Suspended</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-4 w-8 rounded bg-yellow-200 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400">
-                  <TrendingUp className="h-3 w-3 stroke-[3]" />
-                </div>
+                <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-muted-foreground text-xs">Extended</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Ring Indicators */}
+          <div>
+            <p className="font-medium text-foreground text-sm mb-2">Status Ring Indicators:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-8 rounded bg-muted ring-2 ring-blue-400 ring-offset-1" />
+                <span className="text-muted-foreground text-xs">Active</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-8 rounded bg-muted border border-border" />
+                <span className="text-muted-foreground text-xs">Finished</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-8 rounded bg-muted ring-2 ring-red-400 ring-offset-1" />
+                <span className="text-muted-foreground text-xs">Suspended</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-8 rounded bg-muted ring-2 ring-amber-400 ring-offset-1" />
                 <span className="text-muted-foreground text-xs">Extended</span>
               </div>
             </div>

@@ -42,10 +42,11 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
+import { TreatmentActivityLog } from "@/components/patients/TreatmentActivityLog";
 import { NoTreatmentsEmptyState, NoDiagnosticsEmptyState } from "@/components/EmptyState";
 import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi, antibioticsApi } from "@/services/Api";
 import type { Patient as PatientType } from "@/models/Patients";
-import type { DiagnosticCategory, DiagnosticSubcategory, Antibiotic } from "@/services/Api";
+import type { DiagnosticCategory, DiagnosticSubcategory, Antibiotic, Treatment } from "@/services/Api";
 
 interface TreatmentRecord {
   id: string;
@@ -103,6 +104,7 @@ export function PatientDetailPage() {
   const [applyingDayId, setApplyingDayId] = useState<string | null>(null);
   const [treatmentRecords, setTreatmentRecords] =
     useState<TreatmentRecord[]>([]);  // Start empty, not with mock data
+  const [rawTreatments, setRawTreatments] = useState<Treatment[]>([]);  // Raw treatments with timestamps for activity log
   const [bedHistory] = useState<BedHistoryEntry[]>([]);  // Start empty, not with mock data
   const [diagnostics, setDiagnostics] = useState<DiagnosticRecord[]>([]);  // Start empty, not with mock data
   const [isNewProgramOpen, setIsNewProgramOpen] = useState(false);
@@ -153,6 +155,7 @@ export function PatientDetailPage() {
       try {
         // Load treatments
         const treatments = await treatmentsApi.getByPatientId(patient.id);
+        setRawTreatments(treatments);  // Keep raw treatments with timestamps for activity log
         const formattedTreatments: TreatmentRecord[] = treatments.map(t => ({
           id: t.id,
           antibioticName: t.antibioticName,
@@ -1582,11 +1585,20 @@ export function PatientDetailPage() {
           </Card>
         </div>
 
-          <div>
-            <h2 className="mb-4 text-2xl font-bold text-foreground">
-              Antibiotic Treatment Timeline
-            </h2>
-            <AntibioticTimeline treatments={timelineTreatments} />
+          {/* Timeline and Activity Log */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <h2 className="mb-4 text-2xl font-bold text-foreground">
+                Antibiotic Treatment Timeline
+              </h2>
+              <AntibioticTimeline treatments={timelineTreatments} />
+            </div>
+            <div className="lg:col-span-1">
+              <h2 className="mb-4 text-2xl font-bold text-foreground">
+                Activity History
+              </h2>
+              <TreatmentActivityLog treatments={rawTreatments} maxEvents={30} />
+            </div>
           </div>
         </>
       )}

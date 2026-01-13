@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Command } from "cmdk";
 import {
+  LayoutDashboard,
   Users,
+  BarChart3,
   Settings,
   UserCog,
   Plus,
@@ -218,6 +220,18 @@ export function CommandPalette({
             className="text-xs font-medium text-muted-foreground px-2 py-1.5"
           >
             <Command.Item
+              value="go-to-dashboard-home"
+              onSelect={() => handleNavigate("/dashboard")}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer",
+                "text-sm text-foreground",
+                "aria-selected:bg-accent aria-selected:text-accent-foreground"
+              )}
+            >
+              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+              <span>Go to Dashboard</span>
+            </Command.Item>
+            <Command.Item
               value="go-to-patients-list"
               onSelect={() => handleNavigate("/patients")}
               className={cn(
@@ -228,6 +242,18 @@ export function CommandPalette({
             >
               <Users className="h-4 w-4 text-muted-foreground" />
               <span>Go to Patients</span>
+            </Command.Item>
+            <Command.Item
+              value="go-to-analytics-charts"
+              onSelect={() => handleNavigate("/analytics")}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer",
+                "text-sm text-foreground",
+                "aria-selected:bg-accent aria-selected:text-accent-foreground"
+              )}
+            >
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <span>Go to Analytics</span>
             </Command.Item>
             <Command.Item
               value="go-to-bed-settings"
