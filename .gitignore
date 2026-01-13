@@ -30,3 +30,5 @@ venv/
 *.njsproj
 *.sln
 *.sw?
+.playwright-mcp/
+docs/img/*.pdf
