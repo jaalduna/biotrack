@@ -67,6 +67,17 @@ export function KeyboardShortcutsHelp({ shortcuts }: KeyboardShortcutsHelpProps)
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-4">
+          {/* Global shortcuts */}
+          <div className="flex items-center justify-between py-1">
+            <span className="text-sm text-muted-foreground">
+              Command palette
+            </span>
+            <kbd className="px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded-md">
+              ⌘/Ctrl + K
+            </kbd>
+          </div>
+
+          {/* Page-specific shortcuts */}
           {shortcuts.map((shortcut, index) => (
             <div
               key={index}
@@ -75,17 +86,17 @@ export function KeyboardShortcutsHelp({ shortcuts }: KeyboardShortcutsHelpProps)
               <span className="text-sm text-muted-foreground">
                 {shortcut.description}
               </span>
-              <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-md">
+              <kbd className="px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded-md">
                 {formatKey(shortcut)}
               </kbd>
             </div>
           ))}
-          <div className="border-t pt-3 mt-3">
+          <div className="border-t border-border pt-3 mt-3">
             <div className="flex items-center justify-between py-1">
               <span className="text-sm text-muted-foreground">
                 Show this help
               </span>
-              <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-md">
+              <kbd className="px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded-md">
                 ?
               </kbd>
             </div>

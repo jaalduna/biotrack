@@ -117,4 +117,17 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Enhanced focus indicators for keyboard navigation */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary ring-2 ring-primary/20;
+  }
+
+  /* Skip link for keyboard users */
+  .skip-link {
+    @apply absolute -top-10 left-4 z-[100] bg-primary text-primary-foreground px-4 py-2 rounded-md transition-all;
+  }
+  .skip-link:focus {
+    @apply top-4;
+  }
 }

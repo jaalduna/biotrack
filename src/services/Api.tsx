@@ -570,12 +570,56 @@ export const treatmentsApi = {
       mockTreatments.splice(index, 1);
       return;
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/treatments/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to delete treatment");
+  },
+
+  async applyDay(id: string): Promise<Treatment> {
+    // Get current treatment to increment daysApplied
+    if (isBetaMode()) {
+      const index = mockTreatments.findIndex(t => t.id === id);
+      if (index === -1) throw new Error("Treatment not found");
+      const treatment = mockTreatments[index];
+      const newDaysApplied = treatment.days_applied + 1;
+
+      // Check if treatment should be marked as finished
+      const newStatus = newDaysApplied >= treatment.programmed_days ? "finished" : treatment.status;
+
+      mockTreatments[index] = {
+        ...treatment,
+        days_applied: newDaysApplied,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+      return transformTreatment(mockTreatments[index]);
+    }
+
+    // For real API, we need to get current treatment first and then update
+    const getResponse = await fetch(`${API_BASE_URL}/treatments/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!getResponse.ok) throw new Error("Failed to fetch treatment");
+    const current: TreatmentApiResponse = await getResponse.json();
+
+    const newDaysApplied = current.days_applied + 1;
+    const newStatus = newDaysApplied >= current.programmed_days ? "finished" : current.status;
+
+    const response = await fetch(`${API_BASE_URL}/treatments/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        ...current,
+        days_applied: newDaysApplied,
+        status: newStatus,
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to apply day");
+    const data: TreatmentApiResponse = await response.json();
+    return transformTreatment(data);
   },
 };
 

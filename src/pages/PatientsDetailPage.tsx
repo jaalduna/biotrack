@@ -14,7 +14,9 @@ import {
   AlertCircle,
   Trash2,
   Edit,
+  CalendarCheck,
 } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -94,9 +96,11 @@ const getSeverityBadgeColor = (severity: string) => {
 
 export function PatientDetailPage() {
   const { id: rutParam } = useParams<{ id: string }>();
+  const toast = useToast();
   const [patient, setPatient] = useState<PatientType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [applyingDayId, setApplyingDayId] = useState<string | null>(null);
   const [treatmentRecords, setTreatmentRecords] =
     useState<TreatmentRecord[]>([]);  // Start empty, not with mock data
   const [bedHistory] = useState<BedHistoryEntry[]>([]);  // Start empty, not with mock data
@@ -244,7 +248,28 @@ export function PatientDetailPage() {
   );
   const [days, setDays] = useState("");
   const [extendDays, setExtendDays] = useState("");
-  
+
+  // Load last-used antibiotics when opening the new program dialog
+  useEffect(() => {
+    if (isNewProgramOpen && availableAntibiotics.length > 0) {
+      const saved = localStorage.getItem("biotrack-last-antibiotics");
+      if (saved) {
+        try {
+          const lastAntibiotics = JSON.parse(saved) as string[];
+          // Only pre-select antibiotics that still exist
+          const validAntibiotics = lastAntibiotics.filter((name) =>
+            availableAntibiotics.some((a) => a.name === name)
+          );
+          if (validAntibiotics.length > 0) {
+            setSelectedAntibiotics(validAntibiotics);
+          }
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+  }, [isNewProgramOpen, availableAntibiotics]);
+
   // Diagnosis Form State
   const [diagnosisForm, setDiagnosisForm] = useState({
     diagnosisName: "",
@@ -399,6 +424,9 @@ export function PatientDetailPage() {
       // Add all new treatments to state
       setTreatmentRecords((prev) => [...prev, ...newTreatments]);
 
+      // Remember last-used antibiotics for quick re-selection
+      localStorage.setItem("biotrack-last-antibiotics", JSON.stringify(selectedAntibiotics));
+
       // Close dialog and reset form
       setIsNewProgramOpen(false);
       setSelectedAntibiotics([]);
@@ -409,7 +437,7 @@ export function PatientDetailPage() {
       setStartDate(new Date().toISOString().split("T")[0]);
       setDays("");
 
-      alert("Treatment program(s) created successfully!");
+      toast.success(`Treatment program${newTreatments.length > 1 ? "s" : ""} created successfully!`);
     } catch (error) {
       console.error("Error creating treatment program:", error);
       alert(
@@ -456,6 +484,44 @@ export function PatientDetailPage() {
        alert("Failed to suspend treatment");
      }
    };
+
+  const handleApplyDay = async (recordId: string) => {
+    try {
+      setApplyingDayId(recordId);
+      const record = treatmentRecords.find(r => r.id === recordId);
+      if (!record) return;
+
+      const updatedTreatment = await treatmentsApi.applyDay(recordId);
+
+      // Update local state
+      setTreatmentRecords((prev) =>
+        prev.map((r) =>
+          r.id === recordId
+            ? {
+                ...r,
+                daysApplied: updatedTreatment.daysApplied,
+                status: updatedTreatment.status as "active" | "suspended" | "extended" | "finished",
+              }
+            : r
+        )
+      );
+
+      // Show success toast
+      const daysRemaining = record.programmedDays - (record.daysApplied + 1);
+      if (updatedTreatment.status === "finished") {
+        toast.success(`${record.antibioticName} treatment completed!`);
+      } else {
+        toast.success(
+          `Day applied to ${record.antibioticName}. ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} remaining.`
+        );
+      }
+    } catch (error) {
+      console.error("Error applying day:", error);
+      toast.error("Failed to apply day to treatment");
+    } finally {
+      setApplyingDayId(null);
+    }
+  };
 
   const handleFinalizeRecord = async (recordId: string) => {
     try {
@@ -1102,6 +1168,15 @@ export function PatientDetailPage() {
 
                       {record.status === "active" && (
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleApplyDay(record.id)}
+                            disabled={applyingDayId === record.id}
+                            className="gap-2"
+                          >
+                            <CalendarCheck className="h-4 w-4" />
+                            {applyingDayId === record.id ? "Applying..." : "Apply Day"}
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

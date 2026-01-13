@@ -23,6 +23,7 @@ import type { Patient, PatientStatus } from "@/models/Patients";
 import type { Unit } from "@/models/Units";
 import { unitsOptions } from "@/models/Units";
 import { uciBeds, utiBeds } from "@/services/MockApi";
+import { formatRut, validateRut } from "@/lib/rut";
 
 interface CreatePatientDialogProps {
   onCreatePatient: (patient: Omit<Patient, "id">) => Promise<void>;
@@ -132,9 +133,17 @@ export function CreatePatientDialog({
                 id="rut"
                 placeholder="12.345.678-9"
                 value={formData.rut}
-                onChange={(e) => setFormData({ ...formData, rut: e.target.value })}
+                onChange={(e) => {
+                  const formatted = formatRut(e.target.value);
+                  setFormData({ ...formData, rut: formatted });
+                }}
                 required
               />
+              {formData.rut.length >= 8 && !validateRut(formData.rut) && (
+                <p className="text-xs text-destructive">
+                  Invalid RUT verification digit
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="name">Full Name *</Label>
