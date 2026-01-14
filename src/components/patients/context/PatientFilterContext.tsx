@@ -1,11 +1,10 @@
 import { createContext, use, useState, type ReactNode } from "react";
-import { type Unit } from "@/models/Units";
 
 interface PatientFilterState {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  selectedUnit: Unit | "all";
-  setSelectedUnit: (unit: Unit | "all") => void;
+  selectedUnit: string;
+  setSelectedUnit: (unit: string) => void;
   selectedBed: string;
   setSelectedBed: (bed: string) => void;
   showOnlyAlerts: boolean;
@@ -22,7 +21,7 @@ export const PatientFilterProvider = ({
   children: ReactNode;
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUnit, setSelectedUnit] = useState<Unit | "all">("all");
+  const [selectedUnit, setSelectedUnit] = useState<string>("all");
   const [selectedBed, setSelectedBed] = useState<string>("all");
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false);
 

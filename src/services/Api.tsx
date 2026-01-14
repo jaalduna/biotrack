@@ -325,36 +325,71 @@ export const patientsApi = {
 
 // Units API
 export const unitsApi = {
-  async getAll(): Promise<UnitApiResponse[]> {
+  async getAll(): Promise<HospitalUnit[]> {
     if (isBetaMode()) {
-      return mockUnits;
+      return defaultUnits;
     }
-    
-    const response = await fetch(`${API_BASE_URL}/units`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch units");
-    return response.json();
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/units`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data: UnitApiResponse[] = await response.json();
+        return data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          description: u.description,
+        }));
+      }
+    } catch {
+      // Fall back to default units
+    }
+    return defaultUnits;
   },
 
-  async create(name: string, description?: string): Promise<UnitApiResponse> {
+  async create(unit: Omit<HospitalUnit, "id">): Promise<HospitalUnit> {
     if (isBetaMode()) {
-      const newUnit: UnitApiResponse = {
+      const newUnit: HospitalUnit = {
         id: Date.now().toString(),
-        name,
-        description,
+        name: unit.name,
+        description: unit.description,
       };
-      mockUnits.push(newUnit);
+      mockUnits.push({ id: newUnit.id, name: newUnit.name, description: newUnit.description });
       return newUnit;
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/units`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify(unit),
     });
-    if (!response.ok) throw new Error("Failed to create unit");
+    if (!response.ok) {
+      await handleApiError(response);
+    }
     return response.json();
+  },
+
+  async update(id: string, unit: Partial<HospitalUnit>): Promise<HospitalUnit> {
+    const response = await fetch(`${API_BASE_URL}/units/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(unit),
+    });
+    if (!response.ok) {
+      await handleApiError(response);
+    }
+    return response.json();
+  },
+
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/units/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      await handleApiError(response);
+    }
   },
 };
 
@@ -874,10 +909,31 @@ let mockPatients: Patient[] = [
   },
 ];
 
-let mockUnits: UnitApiResponse[] = [
-  { id: "1", name: "ICU-A", description: "Intensive Care Unit A" },
-  { id: "2", name: "ICU-B", description: "Intensive Care Unit B" },
+// Hospital Unit type (from database)
+export interface HospitalUnit {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Default units for fallback
+const defaultUnits: HospitalUnit[] = [
+  { id: "UCI", name: "UCI", description: "Unidad de Cuidados Intensivos" },
+  { id: "UTI", name: "UTI", description: "Unidad de Terapia Intensiva" },
+  { id: "UTIM", name: "UTIM", description: "Unidad de Terapia Intermedia" },
+  { id: "MEDICINA", name: "MEDICINA", description: "Medicina Interna" },
+  { id: "CIRUGIA", name: "CIRUGIA", description: "Cirugía" },
+  { id: "URGENCIAS", name: "URGENCIAS", description: "Urgencias" },
+  { id: "GINECOLOGIA", name: "GINECOLOGIA", description: "Ginecología" },
+  { id: "PENSIONADOS", name: "PENSIONADOS", description: "Pensionados" },
+  { id: "HD", name: "HD", description: "Hemodiálisis" },
 ];
+
+let mockUnits: UnitApiResponse[] = defaultUnits.map(u => ({
+  id: u.id,
+  name: u.name,
+  description: u.description,
+}));
 
 let mockDiagnostics: DiagnosticApiResponse[] = [
   {

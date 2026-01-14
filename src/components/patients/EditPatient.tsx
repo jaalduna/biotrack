@@ -1,6 +1,4 @@
 import type { Patient, PatientStatus } from "@/models/Patients";
-import type { Unit } from "@/models/Units";
-import { unitsOptions } from "@/models/Units";
 import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { uciBeds, utiBeds } from "@/services/MockApi";
+import { useUnits } from "@/contexts/UnitsContext";
+import { getBedsByUnitName } from "@/config/units.config";
 
 type EditPatientProps = {
   patient: Patient;
@@ -28,6 +27,7 @@ export const EditPatient: React.FC<EditPatientProps> = ({
 }) => {
   const [form, setForm] = useState<Patient>(patient);
   const [isSaving, setIsSaving] = useState(false);
+  const { unitNames } = useUnits();
 
   useEffect(() => {
     setForm(patient);
@@ -35,13 +35,13 @@ export const EditPatient: React.FC<EditPatientProps> = ({
 
   // Get all beds for the selected unit and calculate which are occupied
   const { allBeds: unitBeds, occupiedBeds } = useMemo(() => {
-    const allBeds = form.unit === "UCI" ? uciBeds : utiBeds;
-    
+    const allBeds = getBedsByUnitName(form.unit);
+
     // Get occupied beds in this unit (excluding current patient's bed)
     const occupied = allPatients
       .filter(p => p.unit === form.unit && p.id !== patient.id && p.bedNumber)
       .map(p => p.bedNumber);
-    
+
     return { allBeds, occupiedBeds: occupied };
   }, [form.unit, allPatients, patient.id]);
 
@@ -50,7 +50,7 @@ export const EditPatient: React.FC<EditPatientProps> = ({
 
   // Reset bed number when unit changes if bed is not available in new unit
   useEffect(() => {
-    const allBedsInUnit = form.unit === "UCI" ? uciBeds : utiBeds;
+    const allBedsInUnit = getBedsByUnitName(form.unit);
     if (form.bedNumber && !allBedsInUnit.includes(form.bedNumber)) {
       // Set to first available bed in the new unit
       const firstAvailable = allBedsInUnit.find(bed => !occupiedBeds.includes(bed));
@@ -140,13 +140,13 @@ export const EditPatient: React.FC<EditPatientProps> = ({
           <Label htmlFor="unit">Unit *</Label>
           <Select
             value={form.unit}
-            onValueChange={(value: Unit) => setForm({ ...form, unit: value })}
+            onValueChange={(value: string) => setForm({ ...form, unit: value })}
           >
             <SelectTrigger id="unit">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {unitsOptions.filter((u) => u !== "all").map((unit) => (
+              {unitNames.map((unit) => (
                 <SelectItem key={unit} value={unit}>
                   {unit}
                 </SelectItem>
@@ -183,7 +183,9 @@ export const EditPatient: React.FC<EditPatientProps> = ({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            {form.unit === "UCI" ? "UCI beds: 1-17" : "UTI beds: 18-34"}
+            {unitBeds.length > 0
+              ? `${form.unit} beds: ${unitBeds[0]}-${unitBeds[unitBeds.length - 1]}`
+              : "No beds configured for this unit"}
             {" • "}
             {availableBedsCount} bed{availableBedsCount !== 1 ? "s" : ""} available
           </p>

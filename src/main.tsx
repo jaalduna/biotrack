@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router";
 import { router } from "./router/router.app";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TeamProvider } from "./contexts/TeamContext";
+import { UnitsProvider } from "./contexts/UnitsContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "./components/Toaster";
@@ -14,10 +15,12 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <AuthProvider>
         <TeamProvider>
-          <SidebarProvider>
-            <RouterProvider router={router} />
-            <Toaster />
-          </SidebarProvider>
+          <UnitsProvider>
+            <SidebarProvider>
+              <RouterProvider router={router} />
+              <Toaster />
+            </SidebarProvider>
+          </UnitsProvider>
         </TeamProvider>
       </AuthProvider>
     </ThemeProvider>

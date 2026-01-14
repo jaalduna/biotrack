@@ -20,9 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import type { Patient, PatientStatus } from "@/models/Patients";
-import type { Unit } from "@/models/Units";
-import { unitsOptions } from "@/models/Units";
-import { uciBeds, utiBeds } from "@/services/MockApi";
+import { useUnits } from "@/contexts/UnitsContext";
+import { getBedsByUnitName } from "@/config/units.config";
 import { formatRut, validateRut } from "@/lib/rut";
 
 interface CreatePatientDialogProps {
@@ -39,6 +38,7 @@ export function CreatePatientDialog({
   onOpenChange: controlledOnOpenChange,
 }: CreatePatientDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const { unitNames } = useUnits();
 
   // Support both controlled and uncontrolled modes
   const isControlled = controlledOpen !== undefined;
@@ -56,20 +56,20 @@ export function CreatePatientDialog({
     name: "",
     age: "",
     status: "waiting" as PatientStatus,
-    unit: "UCI" as Unit,
+    unit: unitNames[0] || "UCI",
     bedNumber: "",
     hasEndingSoonProgram: false,
   });
 
   // Get all beds for the selected unit and calculate which are occupied
   const { unitBeds, occupiedBeds } = useMemo(() => {
-    const allBeds = formData.unit === "UCI" ? uciBeds : utiBeds;
-    
+    const allBeds = getBedsByUnitName(formData.unit);
+
     // Get occupied beds in this unit
     const occupied = existingPatients
       .filter(p => p.unit === formData.unit && p.bedNumber)
       .map(p => p.bedNumber);
-    
+
     return { unitBeds: allBeds, occupiedBeds: occupied };
   }, [formData.unit, existingPatients]);
 
@@ -97,7 +97,7 @@ export function CreatePatientDialog({
         name: "",
         age: "",
         status: "waiting",
-        unit: "UCI",
+        unit: unitNames[0] || "UCI",
         bedNumber: "",
         hasEndingSoonProgram: false,
       });
@@ -190,15 +190,15 @@ export function CreatePatientDialog({
               <Label htmlFor="unit">Unit *</Label>
               <Select
                 value={formData.unit}
-                onValueChange={(value: Unit) =>
-                  setFormData({ ...formData, unit: value })
+                onValueChange={(value: string) =>
+                  setFormData({ ...formData, unit: value, bedNumber: "" })
                 }
               >
                 <SelectTrigger id="unit">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {unitsOptions.filter((u) => u !== "all").map((unit) => (
+                  {unitNames.map((unit) => (
                     <SelectItem key={unit} value={unit}>
                       {unit}
                     </SelectItem>
@@ -234,7 +234,9 @@ export function CreatePatientDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {formData.unit === "UCI" ? "UCI beds: 1-17" : "UTI beds: 18-34"}
+                {unitBeds.length > 0
+                  ? `${formData.unit} beds: ${unitBeds[0]}-${unitBeds[unitBeds.length - 1]}`
+                  : "No beds configured for this unit"}
                 {" • "}
                 {availableBedsCount} bed{availableBedsCount !== 1 ? "s" : ""} available
               </p>

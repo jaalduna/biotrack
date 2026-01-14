@@ -1,12 +1,10 @@
-import type { Unit } from "./Units";
-
 export interface Patient {
   id: string;
   rut: string;
   name: string;
   age: number;
   status: PatientStatus;
-  unit: Unit;
+  unit: string; // Dynamic unit from API
   bedNumber: number;
   hasEndingSoonProgram?: boolean;
 }
