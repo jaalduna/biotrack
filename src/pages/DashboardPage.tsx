@@ -12,10 +12,14 @@ import {
   Clock,
   Pill,
   ArrowRight,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTeam } from "@/contexts/TeamContext";
 import { patientsApi, treatmentsApi } from "@/services/Api";
+import { GuidedTour, useTour } from "@/components/GuidedTour";
+import { WhatsNewModal, CURRENT_RELEASE } from "@/components/WhatsNewModal";
+import { dashboardTourSteps, TOUR_IDS } from "@/components/tours";
 import type { Patient } from "@/models/Patients";
 
 interface DashboardStats {
@@ -35,6 +39,7 @@ interface TreatmentAlert {
 export function DashboardPage() {
   const { user } = useAuth();
   const { team } = useTeam();
+  const { startTour } = useTour(TOUR_IDS.dashboard);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     activePatients: 0,
@@ -112,18 +117,39 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Guided Tour */}
+      <GuidedTour
+        steps={dashboardTourSteps}
+        tourId={TOUR_IDS.dashboard}
+        onComplete={() => console.log("Dashboard tour completed")}
+      />
+
+      {/* What's New Modal */}
+      <WhatsNewModal release={CURRENT_RELEASE} />
+
       {/* Welcome Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground">
-          {greeting()}, {user?.name?.split(" ")[0] || "there"}
-        </h1>
-        <p className="text-muted-foreground">
-          Here's an overview of {team?.name || "your team"}'s patient management.
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-foreground">
+            {greeting()}, {user?.name?.split(" ")[0] || "there"}
+          </h1>
+          <p className="text-muted-foreground">
+            Here's an overview of {team?.name || "your team"}'s patient management.
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={startTour}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <HelpCircle className="h-4 w-4" />
+          Take a tour
+        </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="stats-overview">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
@@ -185,7 +211,7 @@ export function DashboardPage() {
       {/* Quick Actions & Alerts */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Quick Actions */}
-        <Card>
+        <Card data-tour="quick-actions">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
             <CardDescription>Common tasks you can do right now</CardDescription>
@@ -216,7 +242,7 @@ export function DashboardPage() {
         </Card>
 
         {/* Treatment Alerts */}
-        <Card>
+        <Card data-tour="recent-activity">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />

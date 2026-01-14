@@ -131,3 +131,262 @@
     @apply top-4;
   }
 }
+
+/* ========================================
+   Touch-Optimized Interface (M5.1)
+   ======================================== */
+
+@layer components {
+  /* Minimum 44px touch targets for mobile */
+  @media (pointer: coarse) {
+    button,
+    [role="button"],
+    a,
+    input[type="checkbox"],
+    input[type="radio"],
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Increase tap areas for small buttons */
+    .btn-icon {
+      @apply p-3;
+    }
+
+    /* Larger checkboxes on touch devices */
+    input[type="checkbox"],
+    input[type="radio"] {
+      @apply w-6 h-6;
+    }
+
+    /* More spacing between list items for easier tapping */
+    .touch-list > * {
+      @apply py-3;
+    }
+  }
+
+  /* Pull-to-refresh indicator */
+  .pull-to-refresh {
+    @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-center py-3 bg-primary text-primary-foreground transform -translate-y-full transition-transform duration-300;
+  }
+  .pull-to-refresh.visible {
+    @apply translate-y-0;
+  }
+  .pull-to-refresh .spinner {
+    @apply w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2;
+  }
+
+  /* Swipeable card styles */
+  .swipeable-card {
+    @apply relative overflow-hidden touch-pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  .swipeable-card-content {
+    @apply transition-transform duration-200 ease-out;
+  }
+  .swipeable-card-actions {
+    @apply absolute inset-y-0 right-0 flex items-stretch;
+  }
+  .swipeable-card-action {
+    @apply flex items-center justify-center px-6 text-white font-medium;
+  }
+  .swipeable-card-action.edit {
+    @apply bg-blue-500;
+  }
+  .swipeable-card-action.delete {
+    @apply bg-red-500;
+  }
+
+  /* Mobile filter drawer */
+  .mobile-filter-drawer {
+    @apply fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-2xl shadow-2xl transform translate-y-full transition-transform duration-300 ease-out;
+    max-height: 80vh;
+  }
+  .mobile-filter-drawer.open {
+    @apply translate-y-0;
+  }
+  .mobile-filter-drawer-handle {
+    @apply w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto my-3;
+  }
+
+  /* Floating Action Button (FAB) */
+  .fab {
+    @apply fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center;
+    @apply hover:bg-primary/90 active:scale-95 transition-all duration-150;
+    @apply md:hidden; /* Only show on mobile */
+  }
+  .fab:active {
+    @apply shadow-md;
+  }
+
+  /* Touch feedback */
+  @media (pointer: coarse) {
+    .touch-feedback {
+      @apply active:bg-muted/50 transition-colors duration-75;
+    }
+    .touch-feedback-primary {
+      @apply active:bg-primary/80 transition-colors duration-75;
+    }
+  }
+
+  /* Safe area padding for mobile devices with notches */
+  .safe-area-inset {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-top: env(safe-area-inset-top, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* ========================================
+   Print & Export Styles (M7.3)
+   ======================================== */
+
+@media print {
+  /* Hide navigation and non-essential UI elements */
+  nav,
+  aside,
+  .sidebar,
+  .fab,
+  .skip-link,
+  .mobile-filter-drawer,
+  .pull-to-refresh,
+  button:not(.print-include),
+  [data-print-hide],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset page layout for printing */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  /* Remove shadow and borders for cleaner print */
+  .shadow,
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: none !important;
+  }
+
+  /* Ensure cards have visible borders for print */
+  .card,
+  [class*="Card"] {
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  /* Full width content */
+  main {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0.5in !important;
+  }
+
+  /* Ensure proper margins for content area */
+  .ml-16,
+  .ml-64 {
+    margin-left: 0 !important;
+  }
+
+  /* Page break controls */
+  .print-break-before {
+    break-before: page;
+  }
+  .print-break-after {
+    break-after: page;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+
+  /* Print header styling */
+  .print-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #000;
+    margin-bottom: 1rem;
+  }
+
+  /* Table styling for print */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+  th,
+  td {
+    border: 1px solid #ccc;
+    padding: 0.5rem;
+    text-align: left;
+  }
+  th {
+    background: #f3f4f6 !important;
+    font-weight: 600;
+  }
+
+  /* Badge styling for print */
+  .badge,
+  [class*="Badge"] {
+    border: 1px solid currentColor !important;
+    background: transparent !important;
+  }
+
+  /* Timeline and chart adjustments */
+  .timeline,
+  [class*="Timeline"] {
+    break-inside: avoid;
+  }
+
+  /* Print page settings */
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  /* Footer with page numbers */
+  @page {
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+    }
+  }
+
+  /* Make links show their URLs */
+  a[href]:not(.no-print-url)::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* Force colors for important elements */
+  .print-color-force {
+    color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Printable report styling (shown when printing) */
+.print-only {
+  display: none;
+}
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
+}

@@ -121,46 +121,6 @@ export function AntibioticTimeline({ treatments }: AntibioticTimelineProps) {
   // on every render to maintain hook order consistency
   const { minDate = new Date(), maxDate = new Date(), totalDays = 0, tracks = [] } = timelineData || {};
 
-  // Get all treatment start/end dates for x-axis markers
-  const treatmentBoundaries = useMemo(() => {
-    if (!timelineData) return [];
-    
-    const boundaries: { date: Date; position: number; type: 'start' | 'end'; antibioticName: string; label: string }[] = [];
-    
-    treatments.forEach((treatment) => {
-      // Start date marker - at the beginning of the start date
-      const startPosition = ((treatment.startDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays;
-      boundaries.push({
-        date: treatment.startDate,
-        position: startPosition,
-        type: 'start',
-        antibioticName: treatment.antibioticName,
-        label: treatment.startDate.toLocaleDateString("en-US", { 
-          month: "short", 
-          day: "numeric" 
-        }),
-      });
-      
-      // End date marker - at the END of the end date (since dates are inclusive)
-      // Add 1 to position the tick at the end of the inclusive end date
-      const endDaysFromMin = (treatment.endDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
-      const endPosition = (endDaysFromMin + 1) / totalDays;
-      boundaries.push({
-        date: treatment.endDate,
-        position: endPosition,
-        type: 'end',
-        antibioticName: treatment.antibioticName,
-        label: treatment.endDate.toLocaleDateString("en-US", { 
-          month: "short", 
-          day: "numeric" 
-        }),
-      });
-    });
-    
-    // Sort by position
-    return boundaries.sort((a, b) => a.position - b.position);
-  }, [treatments, minDate, totalDays, timelineData]);
-
   // Calculate total days for each antibiotic
   const antibioticTotals = useMemo(() => {
     const totals: Record<string, number> = {};

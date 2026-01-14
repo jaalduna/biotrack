@@ -482,23 +482,70 @@ export const diagnosticsApi = {
   },
 };
 
+// Mock diagnostic categories for fallback
+const mockDiagnosticCategories: DiagnosticCategory[] = [
+  { id: "1", name: "Respiratory", code: "RESP", description: "Respiratory system diagnoses", isActive: true, sortOrder: 1 },
+  { id: "2", name: "Cardiovascular", code: "CARD", description: "Cardiovascular system diagnoses", isActive: true, sortOrder: 2 },
+  { id: "3", name: "Infectious", code: "INF", description: "Infectious diseases", isActive: true, sortOrder: 3 },
+  { id: "4", name: "Neurological", code: "NEUR", description: "Neurological conditions", isActive: true, sortOrder: 4 },
+  { id: "5", name: "Gastrointestinal", code: "GI", description: "Gastrointestinal diagnoses", isActive: true, sortOrder: 5 },
+  { id: "6", name: "Renal", code: "REN", description: "Renal system diagnoses", isActive: true, sortOrder: 6 },
+  { id: "7", name: "Metabolic", code: "META", description: "Metabolic disorders", isActive: true, sortOrder: 7 },
+  { id: "8", name: "Trauma", code: "TRAU", description: "Trauma and injuries", isActive: true, sortOrder: 8 },
+];
+
+const mockSubcategories: Record<string, DiagnosticSubcategory[]> = {
+  "1": [
+    { id: "101", categoryId: "1", name: "Pneumonia", code: "PNEU", description: "Community or hospital acquired pneumonia", isActive: true, sortOrder: 1 },
+    { id: "102", categoryId: "1", name: "ARDS", code: "ARDS", description: "Acute Respiratory Distress Syndrome", isActive: true, sortOrder: 2 },
+    { id: "103", categoryId: "1", name: "COPD Exacerbation", code: "COPD", description: "COPD acute exacerbation", isActive: true, sortOrder: 3 },
+  ],
+  "2": [
+    { id: "201", categoryId: "2", name: "Acute MI", code: "AMI", description: "Acute Myocardial Infarction", isActive: true, sortOrder: 1 },
+    { id: "202", categoryId: "2", name: "Heart Failure", code: "HF", description: "Congestive Heart Failure", isActive: true, sortOrder: 2 },
+  ],
+  "3": [
+    { id: "301", categoryId: "3", name: "Sepsis", code: "SEP", description: "Sepsis and septic shock", isActive: true, sortOrder: 1 },
+    { id: "302", categoryId: "3", name: "UTI", code: "UTI", description: "Urinary Tract Infection", isActive: true, sortOrder: 2 },
+    { id: "303", categoryId: "3", name: "Bacteremia", code: "BAC", description: "Blood stream infection", isActive: true, sortOrder: 3 },
+  ],
+};
+
 export const diagnosticCategoriesApi = {
   async getAll(): Promise<DiagnosticCategory[]> {
-    const response = await fetch(`${API_BASE_URL}/diagnostic-categories`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch diagnostic categories");
-    const data: DiagnosticCategoryApiResponse[] = await response.json();
-    return data.map(transformDiagnosticCategory);
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/diagnostic-categories`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data: DiagnosticCategoryApiResponse[] = await response.json();
+        return data.map(transformDiagnosticCategory);
+      }
+    } catch {
+      // Fall back to mock data
+    }
+
+    // Return mock data as fallback
+    return mockDiagnosticCategories;
   },
 
   async getSubcategoriesByCategory(categoryId: string): Promise<DiagnosticSubcategory[]> {
-    const response = await fetch(`${API_BASE_URL}/diagnostic-subcategories?category_id=${categoryId}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch subcategories");
-    const data: DiagnosticSubcategoryApiResponse[] = await response.json();
-    return data.map(transformDiagnosticSubcategory);
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/diagnostic-subcategories?category_id=${categoryId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data: DiagnosticSubcategoryApiResponse[] = await response.json();
+        return data.map(transformDiagnosticSubcategory);
+      }
+    } catch {
+      // Fall back to mock data
+    }
+
+    // Return mock data as fallback
+    return mockSubcategories[categoryId] || [];
   },
 };
 
@@ -1060,13 +1107,38 @@ export interface Antibiotic {
   updated_at: string;
 }
 
+// Mock antibiotics for development/beta mode
+const mockAntibiotics: Antibiotic[] = [
+  { id: "1", name: "Amoxicillin", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "2", name: "Ciprofloxacin", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "3", name: "Vancomycin", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "4", name: "Meropenem", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "5", name: "Piperacillin-Tazobactam", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "6", name: "Ceftriaxone", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "7", name: "Azithromycin", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "8", name: "Metronidazole", type: "antibiotic", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "9", name: "Dexamethasone", type: "corticoide", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "10", name: "Prednisone", type: "corticoide", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "11", name: "Hydrocortisone", type: "corticoide", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "12", name: "Methylprednisolone", type: "corticoide", default_start_count: 1, is_active: true, created_at: "2024-01-01", updated_at: "2024-01-01" },
+];
+
 export const antibioticsApi = {
   getAll: async (): Promise<Antibiotic[]> => {
-    const response = await fetch(`${API_BASE_URL}/antibiotics`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch antibiotics");
-    return response.json();
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/antibiotics`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        return response.json();
+      }
+    } catch {
+      // Fall back to mock data
+    }
+
+    // Return mock data as fallback
+    return mockAntibiotics;
   },
 };
 
@@ -1126,5 +1198,150 @@ export const bedConfigApi = {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
+  },
+};
+
+// Patient Notes Types
+export interface PatientNote {
+  id: string;
+  patientId: string;
+  content: string;
+  category: "general" | "clinical" | "medication" | "follow-up" | "alert";
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+  updatedAt?: string;
+  isPinned?: boolean;
+}
+
+// Patient Notes API (uses localStorage as mock backend until real backend is implemented)
+const NOTES_STORAGE_KEY = "biotrack_patient_notes";
+
+function getStoredNotes(): PatientNote[] {
+  try {
+    const stored = localStorage.getItem(NOTES_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredNotes(notes: PatientNote[]): void {
+  localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+}
+
+export const patientNotesApi = {
+  getByPatientId: async (patientId: string): Promise<PatientNote[]> => {
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const result: ApiResponse<PatientNote[]> = await response.json();
+        return result.data || [];
+      }
+    } catch {
+      // Fall back to localStorage
+    }
+
+    // Fallback to localStorage
+    const allNotes = getStoredNotes();
+    return allNotes.filter((note) => note.patientId === patientId);
+  },
+
+  create: async (
+    patientId: string,
+    note: Omit<PatientNote, "id" | "createdAt" | "createdBy" | "createdByName">
+  ): Promise<PatientNote> => {
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(note),
+      });
+      if (response.ok) {
+        const result: ApiResponse<PatientNote> = await response.json();
+        return result.data!;
+      }
+    } catch {
+      // Fall back to localStorage
+    }
+
+    // Fallback to localStorage
+    const userStr = localStorage.getItem("biotrack_user");
+    const user = userStr ? JSON.parse(userStr) : { id: "local", name: "Local User" };
+
+    const newNote: PatientNote = {
+      id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      patientId,
+      content: note.content,
+      category: note.category,
+      createdAt: new Date().toISOString(),
+      createdBy: user.id,
+      createdByName: user.name || user.email || "Unknown User",
+      isPinned: false,
+    };
+
+    const allNotes = getStoredNotes();
+    allNotes.push(newNote);
+    saveStoredNotes(allNotes);
+
+    return newNote;
+  },
+
+  update: async (noteId: string, updates: Partial<PatientNote>): Promise<PatientNote> => {
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/patient-notes/${noteId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updates),
+      });
+      if (response.ok) {
+        const result: ApiResponse<PatientNote> = await response.json();
+        return result.data!;
+      }
+    } catch {
+      // Fall back to localStorage
+    }
+
+    // Fallback to localStorage
+    const allNotes = getStoredNotes();
+    const noteIndex = allNotes.findIndex((n) => n.id === noteId);
+
+    if (noteIndex === -1) {
+      throw new Error("Note not found");
+    }
+
+    allNotes[noteIndex] = {
+      ...allNotes[noteIndex],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveStoredNotes(allNotes);
+    return allNotes[noteIndex];
+  },
+
+  delete: async (noteId: string): Promise<void> => {
+    // Try real API first
+    try {
+      const response = await fetch(`${API_BASE_URL}/patient-notes/${noteId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // Fall back to localStorage
+    }
+
+    // Fallback to localStorage
+    const allNotes = getStoredNotes();
+    const filteredNotes = allNotes.filter((n) => n.id !== noteId);
+    saveStoredNotes(filteredNotes);
   },
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus, Filter, CheckSquare, X } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { CustomHeader } from "@/components/patients/CustomHeader";
@@ -12,6 +12,10 @@ import { patientsApi } from "@/services/Api";
 import { EditPatient } from "@/components/patients/EditPatient";
 import { PatientResumeCard } from "@/components/patients/PatientResumeCard";
 import { CreatePatientDialog } from "@/components/patients/CreatePatientDialog";
+import { MobileFilterDrawer } from "@/components/MobileFilterDrawer";
+import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { BulkActionsToolbar } from "@/components/patients/BulkActionsToolbar";
 import {
   NoPatientsEmptyState,
   NoSearchResultsEmptyState,
@@ -43,6 +47,26 @@ export function PatientsPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedPatients, setSelectedPatients] = useState<Patient[]>([]);
+
+  // Pull-to-refresh callback
+  const handlePullRefresh = useCallback(async () => {
+    try {
+      const data = await patientsApi.getAll();
+      setPatients(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh patients");
+    }
+  }, []);
+
+  // Pull-to-refresh hook
+  const { isRefreshing, pullDistance, progress } = usePullToRefresh({
+    onRefresh: handlePullRefresh,
+    disabled: loading,
+  });
 
   // If user doesn't have a team, show message and button to create one
   if (user && !user.team_id) {
@@ -116,6 +140,52 @@ export function PatientsPageContent() {
     const created = await patientsApi.create(newPatient);
     setPatients((prev) => [...prev, created]);
   };
+
+  // Bulk selection handlers
+  const handlePatientSelect = useCallback((patient: Patient) => {
+    setSelectedPatients((prev) => {
+      const isSelected = prev.some((p) => p.id === patient.id);
+      if (isSelected) {
+        return prev.filter((p) => p.id !== patient.id);
+      }
+      return [...prev, patient];
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedPatients([]);
+    setIsSelectionMode(false);
+  }, []);
+
+  const handleBulkStatusChange = async (
+    patientIds: string[],
+    status: "waiting" | "active" | "archived"
+  ) => {
+    try {
+      await Promise.all(
+        patientIds.map((id) => {
+          const patient = patients.find((p) => p.id === id);
+          if (patient) {
+            return patientsApi.update(id, { ...patient, status });
+          }
+          return Promise.resolve();
+        })
+      );
+      // Refresh the patients list
+      const data = await patientsApi.getAll();
+      setPatients(data);
+    } catch (error) {
+      console.error("Error updating patients:", error);
+      throw error;
+    }
+  };
+
+  const toggleSelectionMode = useCallback(() => {
+    setIsSelectionMode((prev) => !prev);
+    if (isSelectionMode) {
+      setSelectedPatients([]);
+    }
+  }, [isSelectionMode]);
 
   // Focus search input helper
   const focusSearchInput = useCallback(() => {
@@ -210,6 +280,24 @@ export function PatientsPageContent() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <Button
+            variant={isSelectionMode ? "secondary" : "outline"}
+            onClick={toggleSelectionMode}
+            className="gap-2"
+            size="sm"
+          >
+            {isSelectionMode ? (
+              <>
+                <X className="h-4 w-4" />
+                Cancel
+              </>
+            ) : (
+              <>
+                <CheckSquare className="h-4 w-4" />
+                Select
+              </>
+            )}
+          </Button>
         </div>
 
         <CreatePatientDialog
@@ -269,15 +357,39 @@ export function PatientsPageContent() {
               searchQuery={searchQuery}
             />
           ) : (
-            filteredPatients.map((patient, index) => (
-              <Link key={patient.id} to={`/patients/${patient.rut}`}>
+            filteredPatients.map((patient, index) => {
+              const isSelected = selectedPatients.some((p) => p.id === patient.id);
+              const card = (
                 <PatientResumeCard
                   patient={patient}
                   className={getRoundedClass(filteredPatients.length, index)}
                   handleEditPatient={handleEditPatient}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={isSelected}
+                  onSelect={handlePatientSelect}
                 />
-              </Link>
-            ))
+              );
+
+              // In selection mode, clicking the card toggles selection
+              // Otherwise, clicking navigates to patient detail
+              if (isSelectionMode) {
+                return (
+                  <div
+                    key={patient.id}
+                    onClick={() => handlePatientSelect(patient)}
+                    className="cursor-pointer"
+                  >
+                    {card}
+                  </div>
+                );
+              }
+
+              return (
+                <Link key={patient.id} to={`/patients/${patient.rut}`}>
+                  {card}
+                </Link>
+              );
+            })
           )}
         </div>
       )}
@@ -302,6 +414,49 @@ export function PatientsPageContent() {
 
       {/* Keyboard shortcuts help overlay - triggered by pressing "?" */}
       <KeyboardShortcutsHelp shortcuts={keyboardShortcuts} />
+
+      {/* Pull-to-refresh indicator (mobile) */}
+      <PullToRefreshIndicator
+        isRefreshing={isRefreshing}
+        progress={progress}
+        pullDistance={pullDistance}
+      />
+
+      {/* Floating Action Button (mobile) */}
+      <button
+        onClick={() => setCreateDialogOpen(true)}
+        className="fab touch-feedback-primary"
+        aria-label="Add new patient"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
+      {/* Mobile Filter Button */}
+      <button
+        onClick={() => setMobileFilterOpen(true)}
+        className="fixed bottom-6 left-6 z-40 w-12 h-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:bg-secondary/90 active:scale-95 transition-all duration-150 md:hidden"
+        aria-label="Open filters"
+      >
+        <Filter className="h-5 w-5" />
+      </button>
+
+      {/* Mobile Filter Drawer */}
+      <MobileFilterDrawer
+        isOpen={mobileFilterOpen}
+        onClose={() => setMobileFilterOpen(false)}
+        title="Filter Patients"
+      >
+        <div className="space-y-4">
+          <PatientsFilter />
+        </div>
+      </MobileFilterDrawer>
+
+      {/* Bulk Actions Toolbar */}
+      <BulkActionsToolbar
+        selectedPatients={selectedPatients}
+        onClearSelection={handleClearSelection}
+        onStatusChange={handleBulkStatusChange}
+      />
     </>
   );
 }

@@ -43,8 +43,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AntibioticTimeline } from "@/components/patients/AntibioticTimeline";
 import { TreatmentActivityLog } from "@/components/patients/TreatmentActivityLog";
+import { PatientNotesPanel, type PatientNote } from "@/components/patients/PatientNotesPanel";
+import { ExportMenu } from "@/components/ExportMenu";
 import { NoTreatmentsEmptyState, NoDiagnosticsEmptyState } from "@/components/EmptyState";
-import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi, antibioticsApi } from "@/services/Api";
+import { patientsApi, treatmentsApi, diagnosticsApi, diagnosticCategoriesApi, antibioticsApi, patientNotesApi } from "@/services/Api";
 import type { Patient as PatientType } from "@/models/Patients";
 import type { DiagnosticCategory, DiagnosticSubcategory, Antibiotic, Treatment } from "@/services/Api";
 
@@ -118,6 +120,8 @@ export function PatientDetailPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [subcategories, setSubcategories] = useState<DiagnosticSubcategory[]>([]);
   const [availableAntibiotics, setAvailableAntibiotics] = useState<Antibiotic[]>([]);
+  const [patientNotes, setPatientNotes] = useState<PatientNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
 
   // Fetch patient by RUT from URL
   useEffect(() => {
@@ -186,6 +190,15 @@ export function PatientDetailPage() {
           };
         });
         setDiagnostics(formattedDiagnostics);
+
+        // Load patient notes
+        setNotesLoading(true);
+        try {
+          const notes = await patientNotesApi.getByPatientId(patient.id);
+          setPatientNotes(notes);
+        } finally {
+          setNotesLoading(false);
+        }
       } catch (err) {
         console.error("Error loading patient data:", err);
         // Don't show error, just continue with empty data
@@ -726,6 +739,25 @@ export function PatientDetailPage() {
     }
   };
 
+  // Note handlers
+  const handleAddNote = async (note: Omit<PatientNote, "id" | "createdAt" | "createdBy" | "createdByName">) => {
+    if (!patient) return;
+    const newNote = await patientNotesApi.create(patient.id, note);
+    setPatientNotes((prev) => [newNote, ...prev]);
+  };
+
+  const handleUpdateNote = async (noteId: string, updates: Partial<PatientNote>) => {
+    const updatedNote = await patientNotesApi.update(noteId, updates);
+    setPatientNotes((prev) =>
+      prev.map((note) => (note.id === noteId ? updatedNote : note))
+    );
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    await patientNotesApi.delete(noteId);
+    setPatientNotes((prev) => prev.filter((note) => note.id !== noteId));
+  };
+
   return (
     <>
       {/* Loading State */}
@@ -767,16 +799,40 @@ export function PatientDetailPage() {
                     RUT: {patient.rut}
                   </p>
                 </div>
-                <Badge
-                  variant={patient.status === "active" ? "default" : "secondary"}
-                  className="w-fit"
-                >
-                  {patient.status === "active"
-                    ? "Active Treatment"
-                    : patient.status === "waiting"
-                      ? "Waiting for Treatment"
-                      : "Archived"}
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <Badge
+                    variant={patient.status === "active" ? "default" : "secondary"}
+                    className="w-fit"
+                  >
+                    {patient.status === "active"
+                      ? "Active Treatment"
+                      : patient.status === "waiting"
+                        ? "Waiting for Treatment"
+                        : "Archived"}
+                  </Badge>
+                  <ExportMenu
+                    patient={patient}
+                    treatments={treatmentRecords.map((t) => ({
+                      id: t.id,
+                      antibioticName: t.antibioticName,
+                      antibioticType: t.antibioticType,
+                      startDate: t.startDate,
+                      daysApplied: t.daysApplied,
+                      programmedDays: t.programmedDays,
+                      status: t.status,
+                    }))}
+                    diagnostics={diagnostics.map((d) => ({
+                      id: d.id,
+                      diagnosisName: d.diagnosisName,
+                      diagnosisCode: d.diagnosisCode,
+                      categoryName: d.categoryName,
+                      dateDiagnosed: d.dateDiagnosed,
+                      severity: d.severity,
+                      notes: d.notes,
+                      createdBy: d.createdBy,
+                    }))}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1585,18 +1641,24 @@ export function PatientDetailPage() {
           </Card>
         </div>
 
+        {/* Patient Notes Section */}
+        <div className="mb-8">
+          <PatientNotesPanel
+            patientId={patient.id}
+            notes={patientNotes}
+            onAddNote={handleAddNote}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            isLoading={notesLoading}
+          />
+        </div>
+
           {/* Timeline and Activity Log */}
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <h2 className="mb-4 text-2xl font-bold text-foreground">
-                Antibiotic Treatment Timeline
-              </h2>
               <AntibioticTimeline treatments={timelineTreatments} />
             </div>
             <div className="lg:col-span-1">
-              <h2 className="mb-4 text-2xl font-bold text-foreground">
-                Activity History
-              </h2>
               <TreatmentActivityLog treatments={rawTreatments} maxEvents={30} />
             </div>
           </div>
