@@ -336,6 +336,10 @@ export const unitsApi = {
       });
       if (response.ok) {
         const data: UnitApiResponse[] = await response.json();
+        // Fall back to defaults if API returns empty array
+        if (data.length === 0) {
+          return defaultUnits;
+        }
         return data.map((u) => ({
           id: u.id,
           name: u.name,

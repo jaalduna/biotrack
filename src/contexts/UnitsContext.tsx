@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { unitsApi, type HospitalUnit } from "@/services/Api";
-import { useAuth } from "./AuthContext";
 
 interface UnitsContextType {
   units: HospitalUnit[];
@@ -14,7 +13,6 @@ interface UnitsContextType {
 const UnitsContext = createContext<UnitsContextType | undefined>(undefined);
 
 export function UnitsProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
   const [units, setUnits] = useState<HospitalUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +31,10 @@ export function UnitsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Load units when user is authenticated
+  // Load units on mount (units are public data, no auth required)
   useEffect(() => {
-    if (user) {
-      refreshUnits();
-    }
-  }, [user, refreshUnits]);
+    refreshUnits();
+  }, [refreshUnits]);
 
   const unitNames = units.map((u) => u.name);
 
