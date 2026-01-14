@@ -1,7 +1,7 @@
 # Railway Deployment Progress Report
 
 **Date**: January 14, 2026
-**Status**: Backend deployment failing, Frontend deployed but not functional
+**Status**: Both services deployed - URLs swapped, needs env var fix
 
 ## Overview
 
@@ -12,11 +12,11 @@ This document tracks the deployment progress of BioTrack to Railway. The applica
 
 ## Current State
 
-| Service | Status | URL |
-|---------|--------|-----|
-| Frontend (biotrack) | ✅ Deployed | https://biotrack-production-a927.up.railway.app |
-| Backend (energetic-trust) | ❌ Build Failing | https://energetic-trust-production-0ccc.up.railway.app |
-| PostgreSQL | ✅ Online | Internal railway connection |
+| Service | Status | URL | Note |
+|---------|--------|-----|------|
+| biotrack | ✅ Deployed | https://biotrack-production-a927.up.railway.app | Serving Backend (swapped) |
+| energetic-trust | ✅ Deployed | https://energetic-trust-production-0ccc.up.railway.app | Serving Frontend (swapped) |
+| PostgreSQL | ✅ Online | Internal railway connection | |
 
 ## Problem Description
 
@@ -69,6 +69,42 @@ The build is attempting to copy `docker-entrypoint.sh` which exists in the front
   - Updated `backend/railway.toml` with `dockerfilePath = "Dockerfile.railway"`
 - **Result**: ❌ Failed - Railway ignored `backend/railway.toml`, still used root config
 
+### Attempt 6: Disable config-as-code in UI + rename Dockerfile
+- **Action**:
+  - Cleared "Railway config file path" in Railway UI
+  - Renamed `backend/Dockerfile.railway` → `backend/Dockerfile`
+- **Result**: ❌ Failed - Railway now correctly uses `backend/railway.toml` but config still pointed to old filename
+- **Build log**: "ignoring less specific config file for railway.toml, ignored: 'railway.toml' will keep: 'backend/railway.toml'"
+- **Error**: "couldn't locate the dockerfile at path Dockerfile.railway in code archive"
+
+### Attempt 7: Fix dockerfilePath in backend/railway.toml
+- **Action**:
+  - Updated `backend/railway.toml` to use `dockerfilePath = "Dockerfile"` instead of `dockerfilePath = "Dockerfile.railway"`
+  - Committed and pushed to `develop` branch
+- **Result**: ✅ Build succeeded! But service URLs are swapped
+
+## Current State (Updated)
+
+Both services deployed successfully, but URLs are reversed:
+
+| Service Name | URL | Actually Serving |
+|--------------|-----|------------------|
+| biotrack | https://biotrack-production-a927.up.railway.app | Backend (FastAPI) ✅ |
+| energetic-trust | https://energetic-trust-production-0ccc.up.railway.app | Frontend (nginx) ✅ |
+
+**Health check verification:**
+```bash
+$ curl https://biotrack-production-a927.up.railway.app/api/v1/health
+{"status":"healthy","service":"biotrack-api"}
+```
+
+## Next Step
+
+Update frontend's `API_BASE_URL` environment variable to point to the correct backend URL:
+- Service: `energetic-trust` (the frontend)
+- Variable: `API_BASE_URL`
+- Value: `https://biotrack-production-a927.up.railway.app/api/v1`
+
 ## File Structure
 
 ```
@@ -78,8 +114,8 @@ biotrack/
 ├── nginx.conf                    # Frontend nginx config
 ├── railway.toml                  # Frontend Railway config
 ├── backend/
-│   ├── Dockerfile.railway        # Backend Dockerfile (python)
-│   ├── railway.toml              # Backend Railway config (IGNORED by Railway)
+│   ├── Dockerfile                # Backend Dockerfile (python)
+│   ├── railway.toml              # Backend Railway config (now being used)
 │   ├── start.sh                  # Backend startup script
 │   └── requirements.txt
 └── src/                          # Frontend React code
