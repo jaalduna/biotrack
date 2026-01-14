@@ -12,6 +12,78 @@ See [docs/RAILWAY_DEPLOYMENT_PROGRESS.md](docs/RAILWAY_DEPLOYMENT_PROGRESS.md) f
 
 ## Current Tasks
 
+### Task: Implement Authentication for Beta Release
+
+**Priority**: Critical
+**Status**: 🔄 IN PROGRESS
+**Assigned**: Development
+**Target**: Beta release with real patient data protection
+
+#### Problem Statement
+
+The application currently allows unauthenticated access to all pages and API endpoints. With real patient data, authentication is mandatory before beta release to ensure:
+- Only authorized users can access patient information
+- Multi-tenant data isolation (team_id filtering)
+- Compliance with medical data protection requirements
+
+#### Current State Analysis
+
+| Component | Status | Issue |
+|-----------|--------|-------|
+| Backend auth endpoints | ✅ Built | `/api/v1/auth/login`, `/api/v1/auth/register` functional |
+| LoginPage UI | ✅ Built | `src/pages/LoginPage.tsx` exists but not routed |
+| AuthContext | ✅ Built | JWT handling, login/register functions ready |
+| Patients API | ❌ Unprotected | No `get_current_user`, no `team_id` filtering |
+| Frontend routes | ❌ Unprotected | No authentication guard |
+
+#### Implementation Plan
+
+##### Phase 1: Wire Up Authentication Routes (Frontend)
+
+**Files to modify**: `src/router/router.app.tsx`
+
+**Steps**:
+1. Add public routes for `/login` and `/register`
+2. Create `RegisterPage.tsx` (or use existing if available)
+3. Add route protection wrapper for authenticated routes
+4. Redirect unauthenticated users to `/login`
+
+##### Phase 2: Secure Patients API (Backend - Critical)
+
+**Files to modify**: `backend/app/routers/patients.py`
+
+**Steps**:
+1. Import `get_current_user` from `..auth`
+2. Add `current_user = Depends(get_current_user)` to all endpoints
+3. Add `team_id` filtering to all queries:
+   ```python
+   .filter(PatientModel.team_id == current_user.team_id)
+   ```
+4. Update create endpoint to set `team_id` from current user
+
+##### Phase 3: Frontend Auth Integration
+
+**Files to modify**: `src/services/Api.tsx`, `src/components/AppLayout.tsx`
+
+**Steps**:
+1. Ensure API service includes JWT token in Authorization header
+2. Add logout button to AppLayout
+3. Handle 401 responses (redirect to login)
+4. Display current user info in UI
+
+##### Phase 4: Testing & Verification
+
+**Steps**:
+1. Test registration flow end-to-end
+2. Test login flow end-to-end
+3. Verify protected routes redirect to login
+4. Verify API returns 401 without valid token
+5. Verify team_id isolation (users only see their team's patients)
+
+---
+
+## Completed Tasks
+
 ### Task: Fix Railway Backend Deployment
 
 **Priority**: Critical
@@ -19,6 +91,9 @@ See [docs/RAILWAY_DEPLOYMENT_PROGRESS.md](docs/RAILWAY_DEPLOYMENT_PROGRESS.md) f
 **Assigned**: DevOps
 **Resolution**: Option C (Disable config-as-code) + Environment variable fix
 **Lessons Learned**: [001-railway-monorepo-deployment.md](docs/lessons-learned/001-railway-monorepo-deployment.md)
+
+<details>
+<summary>View Resolution Details</summary>
 
 #### Problem Statement
 
@@ -28,130 +103,41 @@ The Railway backend service (energetic-trust) fails to build because Railway ign
 
 Railway's config-as-code resolution prioritizes the repository root `railway.toml` over subdirectory configs, even when the service's "Root Directory" is set to `/backend`.
 
----
-
-## Resolution Plan
-
-### Option A: Remove dockerfilePath from root railway.toml (Recommended)
-
-**Rationale**: If the root `railway.toml` doesn't specify a `dockerfilePath`, Railway may fall back to auto-detection within the service's root directory.
-
-**Steps**:
-1. Edit `/railway.toml` to remove the `dockerfilePath` directive
-2. Rename `backend/Dockerfile.railway` back to `backend/Dockerfile`
-3. Commit and push changes
-4. Verify Railway builds with the correct Dockerfile
-
-**Risk**: Low - Frontend service may need manual reconfiguration
-
----
-
-### Option B: Use separate railway.toml files with unique names
-
-**Rationale**: Avoid conflict by using distinctly named config files for each service.
-
-**Steps**:
-1. Rename `/railway.toml` → `/railway.frontend.toml`
-2. Rename `/backend/railway.toml` → `/backend/railway.backend.toml`
-3. Configure each Railway service to use its specific config file path
-4. Commit and push changes
-
-**Risk**: Medium - Requires UI changes in Railway dashboard for both services
-
----
-
-### Option C: Disable config-as-code and use Railway UI settings only
-
-**Rationale**: Eliminate config file conflicts by managing all settings through Railway's dashboard.
-
-**Steps**:
-1. Delete both `railway.toml` files or set `enableConfigAsCode = false`
-2. Configure backend service settings manually:
-   - Builder: Dockerfile
-   - Dockerfile Path: `Dockerfile.railway` (or rename to `Dockerfile`)
-   - Health Check Path: `/api/v1/health`
-   - Health Check Timeout: 100s
-   - Restart Policy: On Failure (3 retries)
-3. Verify frontend service settings remain correct
-4. Trigger redeploy
-
-**Risk**: Low - Settings are explicit and not subject to file resolution issues
-
----
-
-### Option D: Consolidate to monorepo-aware railway.toml
-
-**Rationale**: Use Railway's service-specific configuration blocks in a single file.
-
-**Steps**:
-1. Create a single `railway.toml` at root with service-specific sections:
-```toml
-# Frontend service configuration
-[services.biotrack]
-dockerfilePath = "Dockerfile"
-healthcheckPath = "/"
-healthcheckTimeout = 100
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
-
-# Backend service configuration
-[services.energetic-trust]
-rootDirectory = "backend"
-dockerfilePath = "backend/Dockerfile.railway"
-healthcheckPath = "/api/v1/health"
-healthcheckTimeout = 100
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
-```
-2. Delete `/backend/railway.toml`
-3. Commit and push changes
-
-**Risk**: Medium - Requires validation that Railway supports this format
-
----
-
-## Recommended Action Plan
-
-Execute **Option C** first as it has the lowest risk and most direct control:
-
-### Step-by-Step Instructions
+#### Resolution Steps Applied
 
 1. **In Railway Dashboard (energetic-trust service)**:
-   - Go to Settings → Config-as-code
-   - Set Railway config file path to empty/none (disable config-as-code)
+   - Disabled config-as-code
+   - Set Builder to "Dockerfile"
+   - Set Dockerfile Path to `Dockerfile.railway`
 
-2. **Configure Build Settings**:
-   - Go to Settings → Build
-   - Verify Builder is "Dockerfile"
-   - If there's a Dockerfile Path field, set it to `Dockerfile.railway`
-
-3. **Configure Deploy Settings**:
-   - Go to Settings → Deploy
+2. **Configure Deploy Settings**:
    - Set Healthcheck Path to `/api/v1/health`
    - Set Healthcheck Timeout to `100`
    - Set Restart Policy to "On Failure" with 3 retries
 
-4. **Trigger Redeploy**:
-   - Go to Deployments
-   - Click "Redeploy" on the latest deployment or trigger a new one
+3. **Frontend Configuration**:
+   - Updated `API_BASE_URL` environment variable
 
-5. **Verify**:
-   - Check build logs show `python:3.11-slim` base image
-   - Check health endpoint responds: `curl https://energetic-trust-production-0ccc.up.railway.app/api/v1/health`
-
-6. **If successful, configure frontend**:
-   - Update `biotrack` service's `API_BASE_URL` environment variable
-   - Set to: `https://energetic-trust-production-0ccc.up.railway.app/api/v1`
+</details>
 
 ---
 
 ## Success Criteria
 
+### Deployment (Completed)
 - [x] Backend builds successfully with Python 3.11 slim image
 - [x] Backend passes health check at `/api/v1/health`
 - [x] Backend connects to PostgreSQL and runs migrations
 - [x] Frontend can reach backend API endpoints (via runtime config.js)
-- [ ] User authentication works end-to-end (needs manual verification)
+
+### Authentication (In Progress)
+- [ ] Login page accessible at `/biotrack/login`
+- [ ] Registration page accessible at `/biotrack/register`
+- [ ] Unauthenticated users redirected to login
+- [ ] Patients API requires valid JWT token
+- [ ] Patients API filters by user's team_id
+- [ ] User can register, login, and access patient data
+- [ ] User can logout and is redirected to login
 
 ---
 
