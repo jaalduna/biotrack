@@ -15,8 +15,10 @@ See [docs/RAILWAY_DEPLOYMENT_PROGRESS.md](docs/RAILWAY_DEPLOYMENT_PROGRESS.md) f
 ### Task: Fix Railway Backend Deployment
 
 **Priority**: Critical
-**Status**: Blocked
+**Status**: ✅ RESOLVED (2026-01-14)
 **Assigned**: DevOps
+**Resolution**: Option C (Disable config-as-code) + Environment variable fix
+**Lessons Learned**: [001-railway-monorepo-deployment.md](docs/lessons-learned/001-railway-monorepo-deployment.md)
 
 #### Problem Statement
 
@@ -145,16 +147,29 @@ Execute **Option C** first as it has the lowest risk and most direct control:
 
 ## Success Criteria
 
-- [ ] Backend builds successfully with Python 3.11 slim image
-- [ ] Backend passes health check at `/api/v1/health`
-- [ ] Backend connects to PostgreSQL and runs migrations
-- [ ] Frontend can reach backend API endpoints
-- [ ] User authentication works end-to-end
+- [x] Backend builds successfully with Python 3.11 slim image
+- [x] Backend passes health check at `/api/v1/health`
+- [x] Backend connects to PostgreSQL and runs migrations
+- [x] Frontend can reach backend API endpoints (via runtime config.js)
+- [ ] User authentication works end-to-end (needs manual verification)
 
 ---
 
 ## Related Documentation
 
 - [Railway Deployment Progress](docs/RAILWAY_DEPLOYMENT_PROGRESS.md)
+- [Lessons Learned](docs/lessons-learned/README.md)
 - [Development Guide](DEVELOPMENT.md)
 - [Database Architecture](DATABASE_ARCHITECTURE.md)
+
+---
+
+## Deployed Services
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| Frontend | https://energetic-trust-production-0ccc.up.railway.app | React + Vite (nginx) |
+| Backend | https://biotrack-production-a927.up.railway.app | FastAPI + PostgreSQL |
+| Database | Internal Railway connection | PostgreSQL |
+
+> **Note**: Service names are swapped in Railway (biotrack serves backend, energetic-trust serves frontend). See [lessons learned](docs/lessons-learned/001-railway-monorepo-deployment.md) for details.
