@@ -26,14 +26,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY --chown=appuser:appgroup . .
 
+# Make startup script executable
+RUN chmod +x start.sh
+
 # Switch to non-root user
 USER appuser
 
+# Railway uses PORT env variable, default to 8000
+ENV PORT=8000
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+    CMD curl -f http://localhost:${PORT}/api/v1/health || exit 1
 
-# Run with uvicorn (consider gunicorn for production scaling)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run with startup script (migrations + uvicorn)
+CMD ["./start.sh"]

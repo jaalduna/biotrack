@@ -1,5 +1,24 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
+// Runtime config interface (injected by docker-entrypoint.sh in production)
+declare global {
+  interface Window {
+    __RUNTIME_CONFIG__?: {
+      API_BASE_URL: string;
+    };
+  }
+}
+
+// Get API URL: prefer runtime config, then default
+function getApiBaseUrl(): string {
+  if (typeof window !== "undefined" && window.__RUNTIME_CONFIG__?.API_BASE_URL) {
+    return window.__RUNTIME_CONFIG__.API_BASE_URL;
+  }
+  return "http://localhost:8000/api/v1";
+}
+
+const API_BASE_URL = getApiBaseUrl();
+
 export interface User {
   id: string;
   name: string;
@@ -37,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedToken = localStorage.getItem("biotrack_token");
     const storedUser = localStorage.getItem("biotrack_user");
-    
+
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
@@ -46,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -58,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    
+
     setToken(data.access_token);
     setUser(data.user);
     localStorage.setItem("biotrack_token", data.access_token);
@@ -71,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     role: "basic" | "advanced" = "basic"
   ) => {
-    const response = await fetch("http://localhost:8000/api/v1/auth/register", {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, role }),
@@ -83,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    
+
     setToken(data.access_token);
     setUser(data.user);
     localStorage.setItem("biotrack_token", data.access_token);
@@ -113,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const betaToken = `beta_token_${Date.now()}`;
-    
+
     setUser(betaUser);
     setToken(betaToken);
     localStorage.setItem("biotrack_token", betaToken);
@@ -126,9 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("Not authenticated");
     }
 
-    const response = await fetch("http://localhost:8000/api/v1/auth/resend-verification-email", {
+    const response = await fetch(`${API_BASE_URL}/auth/resend-verification-email`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
