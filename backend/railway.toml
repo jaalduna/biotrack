@@ -2,7 +2,7 @@
 # This file configures Railway deployment settings for the backend service
 
 [build]
-dockerfilePath = "Dockerfile"
+dockerfilePath = "Dockerfile.railway"
 
 [deploy]
 healthcheckPath = "/api/v1/health"
