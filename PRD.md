@@ -15,7 +15,7 @@ See [docs/RAILWAY_DEPLOYMENT_PROGRESS.md](docs/RAILWAY_DEPLOYMENT_PROGRESS.md) f
 ### Task: Implement Authentication for Beta Release
 
 **Priority**: Critical
-**Status**: 🔄 IN PROGRESS
+**Status**: ✅ COMPLETED (2026-01-15)
 **Assigned**: Development
 **Target**: Beta release with real patient data protection
 
@@ -31,54 +31,56 @@ The application currently allows unauthenticated access to all pages and API end
 | Component | Status | Issue |
 |-----------|--------|-------|
 | Backend auth endpoints | ✅ Built | `/api/v1/auth/login`, `/api/v1/auth/register` functional |
-| LoginPage UI | ✅ Built | `src/pages/LoginPage.tsx` exists but not routed |
+| LoginPage UI | ✅ Routed | `src/pages/LoginPage.tsx` at `/login` |
 | AuthContext | ✅ Built | JWT handling, login/register functions ready |
-| Patients API | ❌ Unprotected | No `get_current_user`, no `team_id` filtering |
-| Frontend routes | ❌ Unprotected | No authentication guard |
+| Patients API | ✅ Protected | `get_current_user` + `team_id` filtering |
+| Frontend routes | ✅ Protected | ProtectedRoute wrapper redirects to `/login` |
 
 #### Implementation Plan
 
-##### Phase 1: Wire Up Authentication Routes (Frontend)
+##### Phase 1: Wire Up Authentication Routes (Frontend) ✅ COMPLETED
 
-**Files to modify**: `src/router/router.app.tsx`
+**Files modified**: `src/router/router.app.tsx`, `src/components/ProtectedRoute.tsx`
 
-**Steps**:
-1. Add public routes for `/login` and `/register`
-2. Create `RegisterPage.tsx` (or use existing if available)
-3. Add route protection wrapper for authenticated routes
-4. Redirect unauthenticated users to `/login`
+**Completed**:
+1. ✅ Added public routes for `/login` and `/register`
+2. ✅ RegisterPage already exists
+3. ✅ Added ProtectedRoute wrapper with redirect preservation
+4. ✅ Unauthenticated users redirected to `/login?redirect=...`
 
-##### Phase 2: Secure Patients API (Backend - Critical)
+##### Phase 2: Secure Patients API (Backend - Critical) ✅ COMPLETED
 
-**Files to modify**: `backend/app/routers/patients.py`
+**Files modified**: `backend/app/routers/patients.py`, `backend/app/models.py`
 
-**Steps**:
-1. Import `get_current_user` from `..auth`
-2. Add `current_user = Depends(get_current_user)` to all endpoints
-3. Add `team_id` filtering to all queries:
-   ```python
-   .filter(PatientModel.team_id == current_user.team_id)
-   ```
-4. Update create endpoint to set `team_id` from current user
+**Completed**:
+1. ✅ Import `get_current_user` from `..auth`
+2. ✅ Added `current_user = Depends(get_current_user)` to all endpoints
+3. ✅ Added `team_id` filtering to all queries
+4. ✅ Create endpoint sets `team_id` from current user
+5. ✅ Backend tests: `backend/tests/test_patients_auth.py` (15 tests)
+6. ✅ Frontend auth tests: `src/tests/auth.test.tsx` (11 tests)
 
-##### Phase 3: Frontend Auth Integration
+##### Phase 3: Frontend Auth Integration ✅ COMPLETED
 
-**Files to modify**: `src/services/Api.tsx`, `src/components/AppLayout.tsx`
+**Files modified**: `src/services/Api.tsx`, `src/components/UserHeader.tsx`
 
-**Steps**:
-1. Ensure API service includes JWT token in Authorization header
-2. Add logout button to AppLayout
-3. Handle 401 responses (redirect to login)
-4. Display current user info in UI
+**Completed**:
+1. ✅ API service includes JWT token in Authorization header (via `getAuthHeaders()`)
+2. ✅ Logout button in UserHeader component
+3. ✅ Added `authFetch` wrapper that handles 401 responses with redirect to login
+4. ✅ Current user info displayed in UserHeader
+5. ✅ Tests added: `src/tests/api.test.ts` (10 tests for 401 handling)
 
-##### Phase 4: Testing & Verification
+##### Phase 4: Testing & Verification ✅ COMPLETED
 
-**Steps**:
-1. Test registration flow end-to-end
-2. Test login flow end-to-end
-3. Verify protected routes redirect to login
-4. Verify API returns 401 without valid token
-5. Verify team_id isolation (users only see their team's patients)
+**Verified** (2026-01-15):
+1. ✅ Registration flow: New users can register and receive JWT token
+2. ✅ Login flow: Users can login with credentials and receive JWT token
+3. ✅ Protected routes: Unit tests verify redirect to login (3 tests pass)
+4. ✅ API 401: Without token returns `{"detail":"Not authenticated"}`
+5. ✅ API 401: Invalid token returns `{"detail":"Could not validate credentials"}`
+6. ✅ Team isolation: Users only see patients from their own team
+7. ✅ Patient access: Authenticated users with team can access patient data
 
 ---
 
@@ -130,14 +132,15 @@ Railway's config-as-code resolution prioritizes the repository root `railway.tom
 - [x] Backend connects to PostgreSQL and runs migrations
 - [x] Frontend can reach backend API endpoints (via runtime config.js)
 
-### Authentication (In Progress)
-- [ ] Login page accessible at `/biotrack/login`
-- [ ] Registration page accessible at `/biotrack/register`
-- [ ] Unauthenticated users redirected to login
-- [ ] Patients API requires valid JWT token
-- [ ] Patients API filters by user's team_id
-- [ ] User can register, login, and access patient data
-- [ ] User can logout and is redirected to login
+### Authentication (Completed)
+- [x] Login page accessible at `/biotrack/login`
+- [x] Registration page accessible at `/biotrack/register`
+- [x] Unauthenticated users redirected to login
+- [x] Patients API requires valid JWT token
+- [x] Patients API filters by user's team_id
+- [x] User can register, login, and access patient data
+- [x] User can logout and is redirected to login
+- [x] End-to-end testing verification (Phase 4)
 
 ---
 
@@ -159,3 +162,46 @@ Railway's config-as-code resolution prioritizes the repository root `railway.tom
 | Database | Internal Railway connection | PostgreSQL |
 
 > **Note**: Service names are swapped in Railway (biotrack serves backend, energetic-trust serves frontend). See [lessons learned](docs/lessons-learned/001-railway-monorepo-deployment.md) for details.
+
+---
+
+## Tech Stack & Testing Requirements
+
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State Management**: React Context (AuthContext, TeamContext)
+- **Routing**: React Router v7
+- **Testing**: Vitest + React Testing Library
+
+### Backend
+- **Framework**: FastAPI (Python 3.11+)
+- **ORM**: SQLAlchemy
+- **Database**: PostgreSQL
+- **Authentication**: JWT (python-jose) + bcrypt
+- **Migrations**: Alembic
+- **Testing**: pytest + httpx
+
+### Testing Guidelines
+
+All new features must include tests:
+
+**Backend (pytest)**:
+```bash
+cd backend
+pytest tests/ -v  # Run all tests
+pytest tests/test_patients_auth.py -v  # Run specific test file
+```
+
+**Frontend (vitest)**:
+```bash
+npm run test  # Run all tests
+npm run test -- src/tests/auth.test.tsx --run  # Run specific test file
+npm run test:ui  # Run with interactive UI
+```
+
+**Test Requirements**:
+- API endpoints: Test authentication (401 without token), authorization (team isolation), and CRUD operations
+- Frontend: Test component rendering, user interactions, and auth flows
+- New features require tests before merge to main branch

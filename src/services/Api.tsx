@@ -42,10 +42,35 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
+// Handle 401 Unauthorized - clear auth and redirect to login
+function handleUnauthorized(): void {
+  localStorage.removeItem("biotrack_token");
+  localStorage.removeItem("biotrack_user");
+  localStorage.removeItem("biotrack_beta_mode");
+
+  // Redirect to login with current path as redirect parameter
+  const currentPath = window.location.pathname + window.location.search;
+  const redirectPath = encodeURIComponent(currentPath);
+  window.location.href = `/biotrack/login?redirect=${redirectPath}`;
+}
+
+// Wrapper for fetch that handles 401 responses
+async function authFetch(url: string, options?: RequestInit): Promise<Response> {
+  const response = await fetch(url, options);
+
+  if (response.status === 401 && !isBetaMode()) {
+    handleUnauthorized();
+    // Return a rejected promise to prevent further processing
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  return response;
+}
+
 // Helper to extract detailed error messages from API responses
 async function handleApiError(response: Response): Promise<never> {
   let errorMessage = "An error occurred";
-  
+
   try {
     const errorData = await response.json();
     if (errorData.detail) {
@@ -55,7 +80,7 @@ async function handleApiError(response: Response): Promise<never> {
     // If response isn't JSON, use status text
     errorMessage = response.statusText || `Error ${response.status}`;
   }
-  
+
   throw new Error(errorMessage);
 }
 
@@ -241,7 +266,7 @@ export const patientsApi = {
       return mockPatients;
     }
     
-    const response = await fetch(`${API_BASE_URL}/patients`, {
+    const response = await authFetch(`${API_BASE_URL}/patients`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch patients");
@@ -256,7 +281,7 @@ export const patientsApi = {
       return patient;
     }
     
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/patients/${id}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch patient");
@@ -274,7 +299,7 @@ export const patientsApi = {
       return newPatient;
     }
     
-    const response = await fetch(`${API_BASE_URL}/patients`, {
+    const response = await authFetch(`${API_BASE_URL}/patients`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(transformPatientToApi(patient)),
@@ -292,7 +317,7 @@ export const patientsApi = {
       return mockPatients[index];
     }
     
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/patients/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(transformPatientToApi(patient)),
@@ -310,7 +335,7 @@ export const patientsApi = {
       return;
     }
     
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/patients/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -331,7 +356,7 @@ export const unitsApi = {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/units`, {
+      const response = await authFetch(`${API_BASE_URL}/units`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -363,7 +388,7 @@ export const unitsApi = {
       return newUnit;
     }
 
-    const response = await fetch(`${API_BASE_URL}/units`, {
+    const response = await authFetch(`${API_BASE_URL}/units`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(unit),
@@ -375,7 +400,7 @@ export const unitsApi = {
   },
 
   async update(id: string, unit: Partial<HospitalUnit>): Promise<HospitalUnit> {
-    const response = await fetch(`${API_BASE_URL}/units/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/units/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(unit),
@@ -387,7 +412,7 @@ export const unitsApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/units/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/units/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -400,7 +425,7 @@ export const unitsApi = {
 // Beds API
 export const bedsApi = {
   async getAll(): Promise<BedApiResponse[]> {
-    const response = await fetch(`${API_BASE_URL}/beds`, {
+    const response = await authFetch(`${API_BASE_URL}/beds`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch beds");
@@ -408,7 +433,7 @@ export const bedsApi = {
   },
 
   async create(unitId: string, bedNumber: number): Promise<BedApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/beds`, {
+    const response = await authFetch(`${API_BASE_URL}/beds`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ unit_id: unitId, bed_number: bedNumber, is_occupied: false }),
@@ -425,7 +450,7 @@ export const diagnosticsApi = {
       return mockDiagnostics.map(transformDiagnostic);
     }
     
-    const response = await fetch(`${API_BASE_URL}/diagnostics`, {
+    const response = await authFetch(`${API_BASE_URL}/diagnostics`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch diagnostics");
@@ -441,7 +466,7 @@ export const diagnosticsApi = {
       return patientDiagnostics;
     }
     
-    const response = await fetch(`${API_BASE_URL}/diagnostics?patient_id=${patientId}`, {
+    const response = await authFetch(`${API_BASE_URL}/diagnostics?patient_id=${patientId}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch diagnostics for patient");
@@ -456,7 +481,7 @@ export const diagnosticsApi = {
       return transformDiagnostic(diagnostic);
     }
     
-    const response = await fetch(`${API_BASE_URL}/diagnostics/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/diagnostics/${id}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch diagnostic");
@@ -474,7 +499,7 @@ export const diagnosticsApi = {
       return transformDiagnostic(newDiagnostic);
     }
     
-    const response = await fetch(`${API_BASE_URL}/diagnostics`, {
+    const response = await authFetch(`${API_BASE_URL}/diagnostics`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(transformDiagnosticToApi(diagnostic)),
@@ -495,7 +520,7 @@ export const diagnosticsApi = {
       return transformDiagnostic(mockDiagnostics[index]);
     }
     
-    const response = await fetch(`${API_BASE_URL}/diagnostics/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/diagnostics/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(transformDiagnosticToApi(diagnostic)),
@@ -513,7 +538,7 @@ export const diagnosticsApi = {
       return;
     }
     
-    const response = await fetch(`${API_BASE_URL}/diagnostics/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/diagnostics/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -554,7 +579,7 @@ export const diagnosticCategoriesApi = {
   async getAll(): Promise<DiagnosticCategory[]> {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/diagnostic-categories`, {
+      const response = await authFetch(`${API_BASE_URL}/diagnostic-categories`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -572,7 +597,7 @@ export const diagnosticCategoriesApi = {
   async getSubcategoriesByCategory(categoryId: string): Promise<DiagnosticSubcategory[]> {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/diagnostic-subcategories?category_id=${categoryId}`, {
+      const response = await authFetch(`${API_BASE_URL}/diagnostic-subcategories?category_id=${categoryId}`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -596,7 +621,7 @@ export const treatmentsApi = {
         .map(transformTreatment);
     }
     
-    const response = await fetch(`${API_BASE_URL}/treatments?patient_id=${patientId}`, {
+    const response = await authFetch(`${API_BASE_URL}/treatments?patient_id=${patientId}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch treatments");
@@ -617,7 +642,7 @@ export const treatmentsApi = {
       return transformTreatment(newTreatment);
     }
     
-    const response = await fetch(`${API_BASE_URL}/treatments`, {
+    const response = await authFetch(`${API_BASE_URL}/treatments`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(transformTreatmentToApi(treatment)),
@@ -639,7 +664,7 @@ export const treatmentsApi = {
       return transformTreatment(mockTreatments[index]);
     }
     
-    const response = await fetch(`${API_BASE_URL}/treatments/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/treatments/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(transformTreatmentToApi(treatment)),
@@ -657,7 +682,7 @@ export const treatmentsApi = {
       return;
     }
 
-    const response = await fetch(`${API_BASE_URL}/treatments/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/treatments/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -685,7 +710,7 @@ export const treatmentsApi = {
     }
 
     // For real API, we need to get current treatment first and then update
-    const getResponse = await fetch(`${API_BASE_URL}/treatments/${id}`, {
+    const getResponse = await authFetch(`${API_BASE_URL}/treatments/${id}`, {
       headers: getAuthHeaders(),
     });
     if (!getResponse.ok) throw new Error("Failed to fetch treatment");
@@ -694,7 +719,7 @@ export const treatmentsApi = {
     const newDaysApplied = current.days_applied + 1;
     const newStatus = newDaysApplied >= current.programmed_days ? "finished" : current.status;
 
-    const response = await fetch(`${API_BASE_URL}/treatments/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/treatments/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify({
@@ -760,7 +785,7 @@ export interface User {
 // Invitations API
 export const invitationsApi = {
   async send(teamId: string, email: string, role: "admin" | "member"): Promise<TeamInvitation> {
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/invitations`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/invitations`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ email, role }),
@@ -770,7 +795,7 @@ export const invitationsApi = {
   },
 
   async list(teamId: string): Promise<TeamInvitation[]> {
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/invitations`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/invitations`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch invitations");
@@ -778,7 +803,7 @@ export const invitationsApi = {
   },
 
   async cancel(teamId: string, invitationId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/invitations/${invitationId}`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/invitations/${invitationId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -786,13 +811,14 @@ export const invitationsApi = {
   },
 
   async getByToken(token: string): Promise<TeamInvitation> {
+    // Public endpoint - no auth required
     const response = await fetch(`${API_BASE_URL}/invitations/${token}`);
     if (!response.ok) throw new Error("Failed to fetch invitation");
     return response.json();
   },
 
   async accept(token: string): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/invitations/${token}/accept`, {
+    const response = await authFetch(`${API_BASE_URL}/invitations/${token}/accept`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -985,7 +1011,7 @@ export const teamsApi = {
       };
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch team");
@@ -997,7 +1023,7 @@ export const teamsApi = {
       throw new Error("Team creation not available in beta mode");
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ name }),
@@ -1011,7 +1037,7 @@ export const teamsApi = {
       throw new Error("Team updates not available in beta mode");
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify({ name }),
@@ -1032,7 +1058,7 @@ export const teamsApi = {
       }];
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/members`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/members`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch team members");
@@ -1044,7 +1070,7 @@ export const teamsApi = {
       throw new Error("Team member management not available in beta mode");
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/members/${userId}/role`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/members/${userId}/role`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify({ role }),
@@ -1058,7 +1084,7 @@ export const teamsApi = {
       throw new Error("Team member management not available in beta mode");
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/members/${userId}`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/members/${userId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -1070,7 +1096,7 @@ export const teamsApi = {
       throw new Error("Team leaving not available in beta mode");
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/leave`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/leave`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -1083,7 +1109,7 @@ export const teamsApi = {
       throw new Error("Team ownership transfer not available in beta mode");
     }
     
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}/transfer-ownership`, {
+    const response = await authFetch(`${API_BASE_URL}/teams/${teamId}/transfer-ownership`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ new_owner_id: newOwnerId }),
@@ -1100,7 +1126,7 @@ export const subscriptionsApi = {
       throw new Error("Subscriptions not available in beta mode - all features are enabled");
     }
     
-    const response = await fetch(`${API_BASE_URL}/subscriptions/checkout?plan=${plan}`, {
+    const response = await authFetch(`${API_BASE_URL}/subscriptions/checkout?plan=${plan}`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -1113,7 +1139,7 @@ export const subscriptionsApi = {
       throw new Error("Subscriptions not available in beta mode - all features are enabled");
     }
     
-    const response = await fetch(`${API_BASE_URL}/subscriptions/portal`, {
+    const response = await authFetch(`${API_BASE_URL}/subscriptions/portal`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -1134,7 +1160,7 @@ export const subscriptionsApi = {
       };
     }
     
-    const response = await fetch(`${API_BASE_URL}/subscriptions/status`, {
+    const response = await authFetch(`${API_BASE_URL}/subscriptions/status`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch subscription status");
@@ -1146,7 +1172,7 @@ export const subscriptionsApi = {
       throw new Error("Subscriptions not available in beta mode - all features are enabled");
     }
     
-    const response = await fetch(`${API_BASE_URL}/subscriptions/downgrade`, {
+    const response = await authFetch(`${API_BASE_URL}/subscriptions/downgrade`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -1187,7 +1213,7 @@ export const antibioticsApi = {
   getAll: async (): Promise<Antibiotic[]> => {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/antibiotics`, {
+      const response = await authFetch(`${API_BASE_URL}/antibiotics`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -1218,7 +1244,7 @@ export interface ApiResponse<T> {
 
 export const bedConfigApi = {
   getAll: async (): Promise<BedConfiguration[]> => {
-    const response = await fetch(`${API_BASE_URL}/bed-configurations`, {
+    const response = await authFetch(`${API_BASE_URL}/bed-configurations`, {
       headers: getAuthHeaders(),
     });
     const result: ApiResponse<BedConfiguration[]> = await response.json();
@@ -1226,7 +1252,7 @@ export const bedConfigApi = {
   },
 
   getById: async (id: string): Promise<BedConfiguration | null> => {
-    const response = await fetch(`${API_BASE_URL}/bed-configurations/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/bed-configurations/${id}`, {
       headers: getAuthHeaders(),
     });
     const result: ApiResponse<BedConfiguration> = await response.json();
@@ -1234,7 +1260,7 @@ export const bedConfigApi = {
   },
 
   create: async (config: Omit<BedConfiguration, 'id'>): Promise<BedConfiguration> => {
-    const response = await fetch(`${API_BASE_URL}/bed-configurations`, {
+    const response = await authFetch(`${API_BASE_URL}/bed-configurations`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(config),
@@ -1244,7 +1270,7 @@ export const bedConfigApi = {
   },
 
   update: async (id: string, config: Partial<BedConfiguration>): Promise<BedConfiguration> => {
-    const response = await fetch(`${API_BASE_URL}/bed-configurations/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/bed-configurations/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(config),
@@ -1254,7 +1280,7 @@ export const bedConfigApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    await fetch(`${API_BASE_URL}/bed-configurations/${id}`, {
+    await authFetch(`${API_BASE_URL}/bed-configurations/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -1294,7 +1320,7 @@ export const patientNotesApi = {
   getByPatientId: async (patientId: string): Promise<PatientNote[]> => {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
+      const response = await authFetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -1316,7 +1342,7 @@ export const patientNotesApi = {
   ): Promise<PatientNote> => {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
+      const response = await authFetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(note),
@@ -1354,7 +1380,7 @@ export const patientNotesApi = {
   update: async (noteId: string, updates: Partial<PatientNote>): Promise<PatientNote> => {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/patient-notes/${noteId}`, {
+      const response = await authFetch(`${API_BASE_URL}/patient-notes/${noteId}`, {
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify(updates),
@@ -1388,7 +1414,7 @@ export const patientNotesApi = {
   delete: async (noteId: string): Promise<void> => {
     // Try real API first
     try {
-      const response = await fetch(`${API_BASE_URL}/patient-notes/${noteId}`, {
+      const response = await authFetch(`${API_BASE_URL}/patient-notes/${noteId}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });

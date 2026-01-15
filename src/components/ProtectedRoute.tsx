@@ -1,4 +1,4 @@
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
@@ -8,9 +8,13 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireAdvanced = false }: ProtectedRouteProps) {
   const { isAuthenticated, isAdvanced, isBetaMode } = useAuth();
+  const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to={isBetaMode ? "/beta" : "/login"} replace />;
+    // Preserve the intended destination for redirect after login
+    const redirectPath = encodeURIComponent(location.pathname + location.search);
+    const loginPath = isBetaMode ? "/beta" : `/login?redirect=${redirectPath}`;
+    return <Navigate to={loginPath} replace />;
   }
 
   if (requireAdvanced && !isAdvanced) {

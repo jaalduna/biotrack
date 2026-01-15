@@ -99,6 +99,7 @@ class Patient(Base):
     __tablename__ = "patients"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
     rut = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
     age = Column(Integer)

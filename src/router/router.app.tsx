@@ -4,14 +4,31 @@ import { BedSettingsPage } from "@/pages/BedSettingsPage";
 import { TeamManagementPage } from "@/pages/TeamManagementPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { AnalyticsPage } from "@/pages/AnalyticsPage";
+import { LoginPage } from "@/pages/LoginPage";
+import { RegisterPage } from "@/pages/RegisterPage";
 import { AppLayout } from "@/components/AppLayout";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { createBrowserRouter, Navigate } from "react-router";
 
 export const router = createBrowserRouter(
   [
+    // Public routes (no authentication required)
+    {
+      path: "/login",
+      element: <LoginPage />,
+    },
+    {
+      path: "/register",
+      element: <RegisterPage />,
+    },
+    // Protected routes (authentication required)
     {
       path: "/",
-      element: <AppLayout />,
+      element: (
+        <ProtectedRoute>
+          <AppLayout />
+        </ProtectedRoute>
+      ),
       children: [
         {
           index: true,
